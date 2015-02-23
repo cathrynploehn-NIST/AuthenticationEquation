@@ -40,7 +40,7 @@ d3.csv(vizFilename,
         function(error, data) {
           // console.log(data); //print data to the console
           
-          data.sort(compareentropy);
+          // data.sort(compareentropy);
 
           newData = data;
           updatedData = data;

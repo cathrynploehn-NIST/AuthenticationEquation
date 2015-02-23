@@ -18,10 +18,11 @@ function drawLabels(){
           .data(newData)
           .enter().append("text")
             .text(function (d) { return d['originalPassword']; })
-            .attr("x", +150)
-            .attr("y", function (d, i) { return i * gridSize + margin.top + gridSize/2; })
             .style("text-anchor", "end")
-            .attr("transform", "translate(0," + gridSize / 1.5 + ")")
+            .attr("transform", function (d, i) {
+
+              return "translate(" + (labelsMargin) + "," +  (i * gridSize + margin.top + gridSize/.85) + ")";
+            })
             .attr("class", function (d, i) { return "password mono hiderow" })
             .attr("id", function (d, i) { return "labelpassword"+i; });
 
@@ -29,10 +30,12 @@ function drawLabels(){
           .data(newData)
           .enter().append("text")
             .text(function (d) { return d['permutedPassword']; })
-            .attr("x", function(d, i){ return (columnList.length * (gridSize + 4)) + getStepLeftMargin(columnList.length, breakBounds, breakMargin)+ 150; })
-            .attr("y", function (d, i) { return i * gridSize + margin.top + gridSize/2; })
             .style("text-anchor", "start")
-            .attr("transform", "translate(0," + gridSize / 1.5 + ")")
+            .attr("transform", function (d, i) {
+
+              return "translate(" + ((columnList.length * gridSize )+ getStepLeftMargin(columnList.length, breakBounds, breakMargin) + (gridMargin-labelsMargin
+                )+ gridMargin) + "," +  (i * gridSize + margin.top + gridSize/.85) + ")";
+            })
             .attr("class", function (d, i) { return "password mono hiderow" })
             .attr("id", function (d, i) { return "labelpermutedpassword"+i; });
 
@@ -40,10 +43,15 @@ function drawLabels(){
           .data(steps)
           .enter().append("text")
             .text(function(d, i) { return d; })
-            .attr("x", 290 * -1)
-            .attr("y", function(d, i) { return i * gridSize + 208 + getStepLeftMargin(i, breakBounds, breakMargin); })
-            .style("text-anchor", "left", "fill", "#aaa")
-            .attr("transform", "rotate(-90)")
+            // .attr("x", 290 * -1)
+            // .attr("y", function(d, i) { return i * gridSize + 208 + getStepLeftMargin(i, breakBounds, breakMargin); })
+            .style("text-anchor", "start", "fill", "#000")
+            .attr("transform", function(d, i) {
+
+
+
+              return "translate(" + (((i+1) * gridSize) + (gridSize/3) + gridMargin + getStepLeftMargin(i, breakBounds, breakMargin)) + ", " + 300 + "), rotate(-70)";
+            })
             .attr("class", function(d, i){return "label"+columnList[i]+" stepLabel mono axis step "+columnList[i]});
 }
 
@@ -98,6 +106,7 @@ function initializeBlocks(thisData){
 }
 
 // Draw main grid on left hand side and minimap grid
+// Draws column by column
 function drawBlocks() {
     for(var index = 0; index < columnList.length; index++){
           var newbreakMargin = getStepLeftMargin(index, breakBounds, breakMargin);
@@ -109,11 +118,9 @@ function drawBlocks() {
           // console.log(thisobj);
           // Update blocks
           thisobj
-              .attr("x", function(d, i) { return  index * gridSize + gridMargin + newbreakMargin; })
-              .attr("y", function(d, i){return i * gridSize + margin.top + gridSize/2;})
-              // .attr("transform", function(d, i){return "translate("+ (index * gridSize + gridMargin + newbreakMargin) + "," + (i * gridSize + margin.top + gridSize/2) +")";})
-              // .attr("rx", 50)
-              // .attr("ry", 50)
+              // .attr("x", function(d, i) { return  ((index * gridSize) + gridMargin + newbreakMargin); })
+              // .attr("y", function(d, i){return i * (gridSize + margin.top + gridSize/2);})
+              .attr("transform", function(d, i){return "translate("+ ((index * gridSize) + gridMargin + newbreakMargin) + "," + (((gridSize + margin.top) * i) + (gridSize/2)) +")";})
               .transition()
               .duration(1000)
               .attr("width", gridSize)
@@ -351,7 +358,7 @@ function hoverBlock(dataObj, name, obj, overVal) {
     } else {
       var colorScale = setColors(currentColorScale, name);
       var colorScaleName = currentColorScale;
-      var textCol = "#aaa";
+      var textCol = "#000";
 
       d3.selectAll(".tinyscore").style("opacity", 1);
       d3.selectAll(".blockLabel").style("opacity", 1);
@@ -505,7 +512,7 @@ function hoverBlock(dataObj, name, obj, overVal) {
            if(result < 0){
             changeCol = "#E82C0C";
           } else {
-            changeCol = "#aaa";
+            changeCol = "#000";
           }
           return changeCol;
         });

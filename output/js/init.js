@@ -1,13 +1,14 @@
 // Data variables
-var vizFilename = "catCode-results-1thousand-2015-01-15.csv";
+var vizFilename = "QA-test-1.csv";
 var originalData;
 var newData;
 var changeData;
 
 //Set constants and global variables
 var margin = { top: 0, right: 0, bottom: 0, left: 300 },
+    labelsMargin = 150, 
     width = 960,
-    height = 800,
+    height = 800, 
     gridSize = Math.floor(height / 40),
     tinyBlockSize = 2,
     legendElementWidth = gridSize*2,
@@ -75,12 +76,6 @@ var viewBox = "0 0 " + $('#chart').width() + " " + ($('body').height() - 300);
 var viewBoxsidebar = "0 0 " + $('#chartsidebar').width() + " " + $('body').height();
 // Create smaller panel 
 var smallviewBox = "0 0 " + $('#chartBreakdown').width() + " 340";
-
-// Data variables
-var vizFilename = "catCode-results-1thousand-2015-01-15.csv";
-var originalData;
-var newData;
-var changeData;
 
 // Label variables
 var blockLabels; 
