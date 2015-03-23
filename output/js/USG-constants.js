@@ -28,21 +28,21 @@ USG.constants = {};
 
 			var METRIC_TYPES = {
 				"originalPassword" : {
-					steplabel: "Original Password",
+					label: "Original Password",
 					dataType: "String",
 					domainType: null,
 					category: {name:"password"},
 					permuted: false
 				},
 				"permutedPassword" : {
-					steplabel: "Permuted Password",
+					label: "Permuted Password",
 					dataType: "String",
 					domainType : null,
 					category: {name:"password"},
 					permuted: false
 				},
 				"symbolStart" : {
-					steplabel: "Starts w/ Symbol",
+					label: "Starts w/ Symbol",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.ZERO_ONE,
 					category: {
@@ -52,7 +52,7 @@ USG.constants = {};
 					permuted: true
 				},
 				"chunks" : {
-					steplabel: "Number of Chunks",
+					label: "Number of Chunks",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.ZERO_MAX,
 					category: {
@@ -62,7 +62,7 @@ USG.constants = {};
 					permuted: true
 				},
 				"characters" : {
-					steplabel: "Size of Chunks",
+					label: "Size of Chunks",
 					dataType:  "int",
 					domainType :{
 							min: 0,
@@ -75,7 +75,7 @@ USG.constants = {};
 					permuted: true
 				},
 				"unsentenceLikeCaps" : {
-					steplabel: "Unsentence-like Capitalization",
+					label: "Unsentence-like Capitalization",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.ZERO_MAX,
 					category: {
@@ -85,7 +85,7 @@ USG.constants = {};
 					permuted: true
 				},
 				"mixedCharacterString" : {
-					steplabel: "Mixed Character String",
+					label: "Mixed Character String",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.ZERO_ONE,
 					category: {
@@ -95,7 +95,7 @@ USG.constants = {};
 					permuted: true
 				},
 				"pronounceable" : {
-					steplabel: "Pronounceable",
+					label: "Pronounceable",
 					dataType:  "int",
 					domainType : {
 						min: "min",
@@ -108,7 +108,7 @@ USG.constants = {};
 					permuted: true
 				},
 				"lpd" : {
-					steplabel: "Total LPD Score",
+					label: "Total LPD Score",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.MIN_MAX,
 					category: {
@@ -119,7 +119,7 @@ USG.constants = {};
 
 				},
 				"desktopkeystrokes" : {
-					steplabel: "Desktop Keystrokes",
+					label: "Desktop Keystrokes",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.MIN_MAX,
 					category: {
@@ -129,7 +129,7 @@ USG.constants = {};
 					permuted: true
 				},
 				"androidkeystrokes" : {
-					steplabel: "Android Keystrokes",
+					label: "Android Keystrokes",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.MIN_MAX,
 					category: {
@@ -139,7 +139,7 @@ USG.constants = {};
 					permuted: true
 				},
 				"ipadkeystrokes" : {
-					steplabel: "iPad Keystrokes",
+					label: "iPad Keystrokes",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.MIN_MAX,
 					category: {
@@ -149,7 +149,7 @@ USG.constants = {};
 					permuted: true
 				},
 				"entropy" : {
-					steplabel: "Entropy",
+					label: "Entropy",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.MIN_MAX,
 					category: {
@@ -159,7 +159,7 @@ USG.constants = {};
 					permuted: true
 				},
 				"lostEntropy" : {
-					steplabel: "Entropy Lost",
+					label: "Entropy Lost",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.MIN_MAX,
 					visualizationType : {
@@ -172,7 +172,7 @@ USG.constants = {};
 					permuted: false
 				},
 				"percentEntropyLoss" : {
-					steplabel: "Percent Entropy Lost",
+					label: "Percent Entropy Lost",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.MIN_MAX,
 					category: {
@@ -182,7 +182,7 @@ USG.constants = {};
 					permuted: false
 				},
 				"passwordlength" : {
-					steplabel: "Password Length",
+					label: "Password Length",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.MIN_MAX,
 					category: {
@@ -191,7 +191,7 @@ USG.constants = {};
 					permuted: false
 				},
 				"numLetters" : {
-					steplabel: "Number of Letters",
+					label: "Number of Letters",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.MIN_MAX,
 					category: {
@@ -200,7 +200,7 @@ USG.constants = {};
 					permuted: false
 				},
 				"numNumbers" : {
-					steplabel: "Number of Digits",
+					label: "Number of Digits",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.MIN_MAX,
 					category: {
@@ -209,7 +209,7 @@ USG.constants = {};
 					permuted: false
 				},
 				"numSymbols" : {
-					steplabel: "Number of Symbols",
+					label: "Number of Symbols",
 					dataType:  "int",
 					domainType : DOMAIN_TYPES.MIN_MAX,
 					category: {

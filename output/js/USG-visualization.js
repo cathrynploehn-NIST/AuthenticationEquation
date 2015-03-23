@@ -285,6 +285,42 @@ USG.visualization = {};
 					},
 					getHTML: function (  ) {
 						return this.html.markup;
+					}, 
+					// Loops through all non-string metrics and executes the passed draw function 
+					draw: function ( drawFunction ) {
+						var currentMetricIndex = 0;
+						var thisObj = this;
+
+						for(var categoryIndex = 0; categoryIndex < thisObj.orderedMetrics.length ; categoryIndex++ ){
+							
+							var categoryName = thisObj.orderedMetrics[categoryIndex].name;
+
+							if(!thisObj.metricSet.categories[categoryName].allString){
+
+								for(var metricIndex = 0; metricIndex < thisObj.orderedMetrics[categoryIndex].metrics.length; metricIndex++ ){
+									
+									var metricName = thisObj.orderedMetrics[categoryIndex].metrics[metricIndex];
+									
+									if( !thisObj.metricSet.isString( metricName ) ){
+
+										drawFunction( thisObj, categoryIndex , metricIndex , metricName, currentMetricIndex );
+
+										currentMetricIndex++;
+
+									}
+
+								}
+							}
+							
+							
+							
+						}
+					},
+					// Template for what a draw function could look like
+					drawFunction: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
+
+						console.log("Implement this method");
+
 					}
 				};
 
@@ -306,9 +342,8 @@ USG.visualization = {};
 						var svgSelector = "#" + thisObj.html.container.id + " " + thisObj.html.id;
 						svgSelector = $(svgSelector).toArray();
 
-
 						// Determine size of SVG viewBox using parent container dimensions
-						thisObj.viewBox = "0 0 " + $( thisObj.html.id ).width() + " " + (thisObj.dimensions.height );
+						thisObj.viewBox = "0 0 " + $( thisObj.html.id ).width() + " " + (thisObj.dimensions.height);
 
 						// SVG
 						thisObj.obj = d3.selectAll(svgSelector).append("svg")
@@ -358,8 +393,10 @@ USG.visualization = {};
 				Tier1.prototype = Object.create( TierInstance.prototype, {
 					visualize: {
 						value: function ( ) {
+
 							this.createsvg();
-							this.initializeBlocks();
+							this.drawGrid();
+							
 						},
 						enumerable: true,
 					    configurable: true, 
@@ -378,44 +415,36 @@ USG.visualization = {};
 					    configurable: true, 
 					    writable: true
 					},
-					initializeBlocks: {
+					drawGrid: { 
 						value: function () {
+
 							var thisObj = this;
+
+							thisObj.draw( thisObj.initializeBlocks );
+							thisObj.draw( thisObj.drawBlocks );
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					initializeBlocks: {
+						value: function ( thisObj, categoryIndex , metricIndex , metricName, currentMetricIndex ) {
+
+							var category = thisObj.orderedMetrics[categoryIndex].name;
 							var svg = thisObj.svg.obj;
 
-							totalMetrics = 0;
+							var nameClass = "." + metricName;	
 
-							for(var k = 0; k < thisObj.orderedMetrics.length; k++ ){
-									
-								console.log(thisObj.orderedMetrics[k]);
-								var category = thisObj.orderedMetrics[k].name;
+							// Initialize this block
+							var columnObj = svg.selectAll(nameClass);
 
-								for(var j = 0; j < thisObj.orderedMetrics[k].metrics.length; j++ ){
-
-									var name = thisObj.orderedMetrics[k].metrics[j]
-
-									var nameClass = "." + name;	
-
-									// Initialize this block
-									// Draw large grid
-									var columnObj = svg.selectAll( nameClass );
-
-									columnObj
-										.data(thisObj.dataset)
-										.enter()
-										.append("rect")
-										.attr("class", function(d, i){return nameClass + " password"+i+" "+name+" "+d['originalPassword']+" "+ d['permutedPassword']+" "+name+"block " + category;})
-										.attr("id", function(d){return d['originalPassword'] + name;});
-
-									totalMetrics++;
-
-								}
-
-								totalMetrics++;
-								
-							}
-
-							this.drawBlocks();
+							columnObj
+								.data(thisObj.dataset)
+								.enter()
+								.append("rect")
+								.attr("class", function(d, i){return "password"+i+" "+metricName+" "+d['originalPassword']+" "+ d['permutedPassword']+" "+metricName+"block";})
+								.attr("id", function(d){return d['originalPassword'] + metricName;})
 
 						},
 						enumerable: true,
@@ -423,57 +452,29 @@ USG.visualization = {};
 					    writable: true
 					},
 					drawBlocks: {
-						value: function () {
-							var thisObj = this;
+						value: function ( thisObj, categoryIndex , metricIndex , metricName, currentMetricIndex ) {
+
 							var svg = thisObj.svg.obj;
 
-							var totalMetrics = 0;
+							var nameClass = "." + metricName;
 
-							console.log(thisObj.orderedMetrics.length );
+							var colorScale = thisObj.metricSet.metrics[ metricName ].colorScale[thisObj.dataKey][thisObj.key];
 
-							for(var k = 0; k < thisObj.orderedMetrics.length ; k++ ){
-								
-								console.log(thisObj.orderedMetrics);
+							// Initialize this block
+							// Draw large grid
+							var columnObj = svg.selectAll( nameClass );
+						
+							columnObj
+								.attr("transform", function(d, i) {
 
-								for(var j = 0; j < thisObj.orderedMetrics[k].metrics.length; j++ ){
+									return "translate(" + ((( (currentMetricIndex) - ((thisObj.gridmetricSet.length + thisObj.orderedMetrics.length-1)/2)) * (thisObj.grid.size.width - .2)) + thisObj.svg.dimensions.widthMidpoint) + ", " + ((thisObj.grid.size.height * i) + thisObj.margin.top) + ")";
+							
+								})
+								.attr("width", thisObj.grid.size.width)
+          						.attr("height", thisObj.grid.size.height)
+          						.style("fill", function(d) { return colorScale(d[metricName]); });
 
-									var name = thisObj.orderedMetrics[k].metrics[j]
-
-									var nameClass = "." + name;	
-
-									var colorScale = thisObj.metricSet.metrics[ name ].colorScale[thisObj.dataKey][thisObj.key];
-
-									// Initialize this block
-									// Draw large grid
-									var columnObj = svg.selectAll( nameClass );
-
-									columnObj
-										.attr("transform", function( d , i ) {
-											
-											var gridWidth = thisObj.grid.size.width,
-											gridHeight = thisObj.grid.size.height,
-
-											numMetrics = thisObj.metricSet.getMetricCount();
-											distanceFromCenter = ( totalMetrics - ( numMetrics/2 )),
-											middle = thisObj.svg.dimensions.widthMidpoint, 
-
-											x = ( distanceFromCenter * gridWidth ) + middle,
-											y = gridHeight * i ;
-
-											return "translate(" + x + ", " + y + ")";
-									
-										})
-										.attr( "width", thisObj.grid.size.width )
-		          						.attr( "height", thisObj.grid.size.height )
-		          						.style( "fill", function(d) { return colorScale( d[ name ] ); });
-
-									totalMetrics++;
-
-								}
-
-								totalMetrics++;
-								
-							}
+							
 							
 						},
 						enumerable: true,
@@ -523,7 +524,9 @@ USG.visualization = {};
 					visualize: {
 						value: function ( ) {
 							this.createsvg();
-							this.draw();
+
+							this.drawLabels();
+							this.drawGrid();
 						},
 						enumerable: true,
 					    configurable: true, 
@@ -543,25 +546,27 @@ USG.visualization = {};
 
 							this.svg = new Svg( height, width, id, this.html.parentContainer );
 
-
 						},
 						enumerable: true,
 					    configurable: true, 
 					    writable: true
-					}, 
-					draw: {
-						value: function () {
-							this.drawLabels();
-							this.initializeBlocks();
+					},
+					drawLabels:{
+						value: function ( ) {
+							var thisObj = this;
+
+							this.drawPasswordLabels();
+							this.draw( thisObj.drawColumnLabels );
 
 						},
 						enumerable: true,
 					    configurable: true, 
 					    writable: true
 					},
-					drawLabels: {
-						value: function () {
-							thisObj = this;
+					drawPasswordLabels: {
+						value: function ( ) {
+							var thisObj = this;
+							
 							var gridsvg = thisObj.svg.obj;
 							var columnssvg = thisObj.columnsSvg.obj ;
 
@@ -590,63 +595,64 @@ USG.visualization = {};
 
 
 							// Create labels for columns
-							var stepLabels = columnssvg.selectAll(".metricLabel")
+							var labels = columnssvg.selectAll(".metricLabel")
 								.data(thisObj.orderedMetrics)
 								.enter().append("g")
 								.attr("class", function(d, i){
 									return (d.name + i + "");
 								});
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					drawColumnLabels: {
+						value: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
 							
+							var columnssvg = thisObj.columnsSvg.obj ;
+						
+							var id = "." + thisObj.orderedMetrics[categoryIndex].name + categoryIndex + "";
+							var labels = columnssvg.selectAll(id);
 
-							var totalMetrics = 0; // Keeps track of all metrics drawn so far
+							labels.append("text")
+							.text(function(d, i){
 
-							var gutter = 0; // Keeps track of gutter width
-
-							for(var k = 0; k < thisObj.orderedMetrics.length; k++ ){
+								return thisObj.metricSet.metrics[metricName].label;
+							})
+							.style("text-anchor", "start")
+							.attr("transform", function() {
 								
-								var id = "." + thisObj.orderedMetrics[k].name + k + "";
-								var labels = columnssvg.selectAll(id);
+								return "translate(" + ((( (currentMetricIndex + categoryIndex) - ((thisObj.gridmetricSet.length + (thisObj.orderedMetrics.length - 1))/2)) * thisObj.grid.size.width) + ((thisObj.grid.size.width)/2) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + (thisObj.columnsSvg.dimensions.height - thisObj.labels.column.size.line - 5) + "), rotate(-70)";
+							
+							})
+							.attr("class", function(){return "label"+metricName+" columnLabel mono axis step "+metricName});
 
-								for(var j = 0; j < thisObj.orderedMetrics[k].metrics.length; j++ ){
 
-									var name = thisObj.orderedMetrics[k].metrics[j]
-
-									labels.append("text")
-									.text(function(d, i){
-
-										return thisObj.metricSet.metrics[name].steplabel;
-									})
-									.style("text-anchor", "start")
-									.attr("transform", function() {
-										
-										return "translate(" + ((( totalMetrics - ((thisObj.gridmetricSet.length + (thisObj.orderedMetrics.length - 1))/2)) * thisObj.grid.size.width) + ((thisObj.grid.size.width)/2) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + (thisObj.columnsSvg.dimensions.height - thisObj.labels.column.size.line - 5) + "), rotate(-70)";
+							labels.append("line")
+								.attr("x1", 0)
+								.attr("x2", thisObj.labels.column.size.line)
+								.attr("y1", 0)
+								.attr("y2", 0)
+								.attr("style", "stroke: #000")
+								.attr("stroke-opacity", 0.2)
+								.attr("transform", function(d, i) {
 									
-									})
-									.attr("class", function(){return "label"+name+" stepLabel mono axis step "+name});
-
-
-									labels.append("line")
-										.attr("x1", 0)
-										.attr("x2", thisObj.labels.column.size.line)
-										.attr("y1", 0)
-										.attr("y2", 0)
-										.attr("style", "stroke: #000")
-										.attr("stroke-opacity", 0.2)
-										.attr("transform", function(d, i) {
-											
-											return "translate(" + ((( totalMetrics - ((thisObj.gridmetricSet.length + (thisObj.orderedMetrics.length-1))/2)) * thisObj.grid.size.width) + (thisObj.grid.size.width/2) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + thisObj.columnsSvg.dimensions.height + "), rotate(-90)";
-										
-										});
-
-									totalMetrics++;
-
-								}
-
-								totalMetrics++;
+									return "translate(" + ((( (currentMetricIndex + categoryIndex) - ((thisObj.gridmetricSet.length + (thisObj.orderedMetrics.length-1))/2)) * thisObj.grid.size.width) + (thisObj.grid.size.width/2) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + thisObj.columnsSvg.dimensions.height + "), rotate(-90)";
 								
-							}
-							
-							
+								});
+						
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					drawGrid:{
+						value: function ( ) {
+							var thisObj = this;
+
+							this.draw( thisObj.initializeBlocks );
+							this.draw( thisObj.drawBlocks );
 
 						},
 						enumerable: true,
@@ -654,77 +660,53 @@ USG.visualization = {};
 					    writable: true
 					},
 					initializeBlocks: {
-						value: function () {
-							thisObj = this;
+						value: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
+							
 							var gridsvg = thisObj.svg.obj;
-							var columnssvg = thisObj.columnsSvg.obj ;
 
-							for(var j = 0; j < thisObj.gridmetricSet.length; j++){
-								var name = thisObj.gridmetricSet[j]; //key for current column
-								var nameClass = "." + name;	
+							var nameClass = "." + metricName;	
 
-								// Initialize this block
-								// Draw large grid
-								var columnObj = gridsvg.selectAll(nameClass);
+							// Initialize this block
+							// Draw large grid
+							var columnObj = gridsvg.selectAll(nameClass);
 
-								columnObj
-									.data(thisObj.dataset)
-									.enter()
-									.append("rect")
-									.attr("class", function(d, i){return "password"+i+" "+name+" "+d['originalPassword']+" "+ d['permutedPassword']+" "+name+"block hiderow";})
-									.attr("id", function(d){return d['originalPassword'] + name;})
-									.style("fill", "#000");
+							columnObj
+								.data(thisObj.dataset)
+								.enter()
+								.append("rect")
+								.attr("class", function(d, i){return "password"+i+" "+metricName+" "+d['originalPassword']+" "+ d['permutedPassword']+" "+metricName+"block hiderow";})
+								.attr("id", function(d){return d['originalPassword'] + metricName;})
+								.style("fill", "#000");
 
-					
-							}
-
-							this.drawBlocks();
 						},
 						enumerable: true,
 					    configurable: true, 
 					    writable: true
 					},
 					drawBlocks: {
-						value: function () {
-							thisObj = this;
+						value: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
+
 							var gridsvg = thisObj.svg.obj;
 							var columnssvg = thisObj.columnsSvg.obj ;
 
-							var totalMetrics = 0; // Keeps track of total metrics drawn
-
-							for(var j = 0; j < thisObj.orderedMetrics.length; j++){
-
-								for(var k = 0; k < thisObj.orderedMetrics[j].metrics.length; k++){
-									var name = thisObj.orderedMetrics[j].metrics[k]; //key for current column
-									var nameClass = "." + name;	
-
-									var colorScale = thisObj.metricSet.metrics[name].colorScale[thisObj.dataKey][thisObj.key];
-
-
-									// Initialize this block
-									// Draw large grid
-									var columnObj = gridsvg.selectAll(nameClass);
-
-									columnObj.data(thisObj.dataset);
-
-									columnObj
-										.attr("transform", function(d, i) {
-
-											return "translate(" + ((( totalMetrics - ((thisObj.gridmetricSet.length + thisObj.orderedMetrics.length-1)/2)) * (thisObj.grid.size.width - .2)) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + ((thisObj.grid.size.height * i) + thisObj.grid.margin.top) + ")";
-									
-										})
-										.attr("width", thisObj.grid.size.width)
-	              						.attr("height", thisObj.grid.size.height)
-	              						.style("fill", function(d) { return colorScale(d[name]); });
-						
-								
-	              						totalMetrics++;
-								}
-
-								totalMetrics++;
-							}
+							var nameClass = "." + metricName;	
 							
+							var colorScale = thisObj.metricSet.metrics[metricName].colorScale[thisObj.dataKey][thisObj.key];
 
+							// Initialize this block
+							// Draw large grid
+							var columnObj = gridsvg.selectAll(nameClass);
+
+							columnObj
+								.attr("transform", function(d, i) {
+
+									return "translate(" + ((( (currentMetricIndex + (categoryIndex)) - ((thisObj.gridmetricSet.length + thisObj.orderedMetrics.length-1)/2)) * (thisObj.grid.size.width - .2)) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + ((thisObj.grid.size.height * i) + thisObj.grid.margin.top) + ")";
+							
+								})
+								.attr("width", thisObj.grid.size.width)
+          						.attr("height", thisObj.grid.size.height)
+          						.style("fill", function(d) { return colorScale(d[metricName]); });
+				
 						},
 						enumerable: true,
 					    configurable: true, 
@@ -818,7 +800,7 @@ USG.visualization = {};
 
 										var metricName = thisObj.metricSet.categories[prop].metricOrder[i],
 										metricObj = thisObj.metricSet.metrics[metricName],
-										metricLabel = metricObj.steplabel,
+										metricLabel = metricObj.label,
 										sliderlabelid =  metricName + '-sliderRange'
 										sliderid = metricName + '-slider';
 
@@ -857,7 +839,6 @@ USG.visualization = {};
 													
 													// filterPasswords( type, ui.values );
 													var labelID = "#" + type + "Range";
-													console.log(ui.values[0]);
 													$(labelID).html(ui.values[0] + " - " + ui.values[1]);
 												}
 											});
@@ -964,7 +945,7 @@ USG.visualization = {};
 										label.append("text")
 										.text(function() { 
 		
-											return thisObj.metricSet.metrics[name].steplabel;
+											return thisObj.metricSet.metrics[name].label;
 									 
 										})
 										.style("text-anchor", "end")
@@ -1479,7 +1460,7 @@ USG.visualization = {};
 
 								if ( this.metrics[prop].visualizationType.grid ) {
 
-									list.push(this.metrics[prop].steplabel);
+									list.push(this.metrics[prop].label);
 
 								}
 
@@ -1554,7 +1535,7 @@ USG.visualization = {};
 			var MetricInstance = function( type ){
 				if( type ){
 					
-					this.steplabel;
+					this.label;
 					this.dataType;
 					this.domainType;
 					this.visualizationType = {};
@@ -1588,8 +1569,8 @@ USG.visualization = {};
 
 						for( var prop in METRIC_PROP.METRIC_TYPES[ type ] ){
 
-							// Insert "new" if steplabel
-							if( prop == "steplabel" ){
+							// Insert "new" if label
+							if( prop == "label" ){
 
 								this[ prop ] = label + METRIC_PROP.METRIC_TYPES[ type ][ prop ];
 
@@ -1608,7 +1589,7 @@ USG.visualization = {};
 					} else {
 
 						// Default metric settings
-						this.steplabel = this.key; // Name of the metric, for putting into arrays, etc.
+						this.label = this.key; // Name of the metric, for putting into arrays, etc.
 						this.dataType = "String"
 						// Standard maximum and minimum values for this metric
 						this.domainType = METRIC_PROP.DOMAIN_TYPES.MIN_MAX;
