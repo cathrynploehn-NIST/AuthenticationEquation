@@ -237,12 +237,13 @@ USG.visualization = {};
 
 					this.html = {
 						parentContainer: htmlElem,
-						id: ""
+						id: "",
+						url: "html/tier" + type + ".html"
 					};
 
 
 					this.type = type;
-					this.htmlURL = "html/tier" + type + ".html";
+					this.visualizationType = "grid";
 
 
 				};
@@ -254,53 +255,32 @@ USG.visualization = {};
 
 						// Load HTML
 						var request = $.ajax({
-							url: thisObj.htmlURL,
+							url: this.html.url,
 							dataType: 'html'
 						});
 
 						// Process loaded HTML
 						$.when(request).done(function( data ){
+
 							var rId = "id=\"heatmap-tier" + thisObj.type + "\""
-							var rId = new RegExp(rId, "g");
+							var rId = new RegExp( rId , "g" );
 
 							// Add specialized id for this tier
-							var rReplace = "id=\"tier" + thisObj.type + "-" + (thisObj.html.parentContainer) + "\""; 
-							data = data.replace(rId, rReplace);
+							var rReplace = "id=\"tier" + thisObj.type + "-" + ( thisObj.html.parentContainer ) + "\""; 
+							data = data.replace( rId , rReplace );
 							
 							thisObj.html.markup = data;
 							thisObj.html.id = "tier" + thisObj.type + "-" + thisObj.html.parentContainer;
 							deferred.resolve(); 
+
 						});
 							
 						return deferred.promise();
 					},
 					// Add svg and nodes 
 					visualize: function () { 
+
 						console.log( " Implement this method. " );
-					},
-					// @Param: {}: SVG object    
-					createDefaultSVG: function ( svg, height, width ) {
-
-						var svgSelector = svg.html.id;
-						svgSelector = $(svgSelector).toArray();
-
-						svg.dimensions = {
-							height: height,
-							width: width
-						}
-
-						// Determine size of SVG viewBox using parent containe dimensions
-						svg.viewBox = "0 0 " + $( html.id ).width() + " " + (svg.dimensions.height );
-
-						// SVG
-						svg.obj = d3.selectAll(svgSelector).append("svg")
-							.attr("viewBox", svg.viewBox)
-							// .attr("overflow", "visible")
-							.attr("height", svg.dimensions.height)
-					 			.attr("width", svg.dimensions.width)
-								.attr("preserveAspectRatio", "xMidYMin meet");
-
-						return svg;
 
 					},
 					getHTML: function (  ) {
@@ -308,21 +288,19 @@ USG.visualization = {};
 					}
 				};
 
-				var Svg = function ( h, w, ID, pc ) {
+				var Svg = function ( height, width, id, parentContainer ) {
 					this.html = {
 						container: {
-							id: pc
+							id: parentContainer
 						},
-						id: ID
+						id: id
 					};
 					this.obj = {};
 					this.viewBox = {};
 					this.dimensions = {
-						height: h,
-						width: w
+						height: height,
+						width: width
 					};
-
-					console.log(h);
 
 					var init = function (thisObj) {
 						var svgSelector = "#" + thisObj.html.container.id + " " + thisObj.html.id;
@@ -357,19 +335,20 @@ USG.visualization = {};
 				// Specialized tiers
 				//// Small view, sidebar
 				var Tier1 = function ( type , dataKey , key , dataset , htmlElem , metricSet  ) {
+
 					TierInstance.call( this , type , dataKey , key , dataset , htmlElem , metricSet );
 					
 					this.margin = {
 						top: 0,
 						column: 10
-					}
+					};
 
 					this.grid = {
 						size: {
 							width: 3,
 							height: 3
 						}
-					}
+					};
 						
 					this.html.id = "#" + htmlElem;
 
@@ -392,7 +371,7 @@ USG.visualization = {};
 							height = $( "#vizualizations-holder" ).height(),
 							width = $( id ).width();
 
-							this.svg = new Svg(height, width, id, this.html.parentContainer)
+							this.svg = new Svg(height, width, id, this.html.parentContainer);
 
 						},
 						enumerable: true,
@@ -401,29 +380,43 @@ USG.visualization = {};
 					},
 					initializeBlocks: {
 						value: function () {
-							thisObj = this;
+							var thisObj = this;
 							var svg = thisObj.svg.obj;
 
-							for(var j = 0; j < thisObj.gridmetricSet.length; j++){
-								var name = thisObj.gridmetricSet[j]; //key for current column
-								var nameClass = "." + name;
+							totalMetrics = 0;
 
-								// Initialize this block
-								// Draw large grid
-								var columnObj = svg.selectAll(nameClass);
+							for(var k = 0; k < thisObj.orderedMetrics.length; k++ ){
+									
+								console.log(thisObj.orderedMetrics[k]);
+								var category = thisObj.orderedMetrics[k].name;
 
-								columnObj.data(thisObj.dataset);
+								for(var j = 0; j < thisObj.orderedMetrics[k].metrics.length; j++ ){
 
-								columnObj
-									.data(thisObj.dataset)
-									.enter()
-									.append("rect")
-									.attr("class", function(d, i){return "password"+i+" "+name+" "+d['originalPassword']+" "+ d['permutedPassword']+" "+name+"block hiderow";})
-									.attr("id", function(d){return d['originalPassword'] + name;});
-					
+									var name = thisObj.orderedMetrics[k].metrics[j]
+
+									var nameClass = "." + name;	
+
+									// Initialize this block
+									// Draw large grid
+									var columnObj = svg.selectAll( nameClass );
+
+									columnObj
+										.data(thisObj.dataset)
+										.enter()
+										.append("rect")
+										.attr("class", function(d, i){return nameClass + " password"+i+" "+name+" "+d['originalPassword']+" "+ d['permutedPassword']+" "+name+"block " + category;})
+										.attr("id", function(d){return d['originalPassword'] + name;});
+
+									totalMetrics++;
+
+								}
+
+								totalMetrics++;
+								
 							}
 
 							this.drawBlocks();
+
 						},
 						enumerable: true,
 					    configurable: true, 
@@ -431,34 +424,57 @@ USG.visualization = {};
 					},
 					drawBlocks: {
 						value: function () {
-							thisObj = this;
+							var thisObj = this;
 							var svg = thisObj.svg.obj;
 
-							for(var j = 0; j < thisObj.gridmetricSet.length; j++){
-								var name = thisObj.gridmetricSet[j]; //key for current column
-								var nameClass = "." + name;	
+							var totalMetrics = 0;
 
-								var colorScale = thisObj.metricSet.metrics[name].colorScale[thisObj.dataKey][thisObj.key];
+							console.log(thisObj.orderedMetrics.length );
 
-								// Initialize this block
-								// Draw large grid
-								var columnObj = svg.selectAll(nameClass);
-
-								columnObj.data(thisObj.dataset);
-
-								columnObj
-									.attr("transform", function(d, i) {
-									
-										return "translate(" + ((( j - (thisObj.gridmetricSet.length/2)) * (thisObj.grid.size.width-.2)) + thisObj.svg.dimensions.widthMidpoint) + ", " + ((thisObj.grid.size.height * i) + thisObj.margin.top) + ")";
+							for(var k = 0; k < thisObj.orderedMetrics.length ; k++ ){
 								
-									})
-									.attr("width", thisObj.grid.size.width)
-              						.attr("height", thisObj.grid.size.height)
-              						.style("fill", function(d) { return colorScale(d[name]); });
-					
+								console.log(thisObj.orderedMetrics);
+
+								for(var j = 0; j < thisObj.orderedMetrics[k].metrics.length; j++ ){
+
+									var name = thisObj.orderedMetrics[k].metrics[j]
+
+									var nameClass = "." + name;	
+
+									var colorScale = thisObj.metricSet.metrics[ name ].colorScale[thisObj.dataKey][thisObj.key];
+
+									// Initialize this block
+									// Draw large grid
+									var columnObj = svg.selectAll( nameClass );
+
+									columnObj
+										.attr("transform", function( d , i ) {
+											
+											var gridWidth = thisObj.grid.size.width,
+											gridHeight = thisObj.grid.size.height,
+
+											numMetrics = thisObj.metricSet.getMetricCount();
+											distanceFromCenter = ( totalMetrics - ( numMetrics/2 )),
+											middle = thisObj.svg.dimensions.widthMidpoint, 
+
+											x = ( distanceFromCenter * gridWidth ) + middle,
+											y = gridHeight * i ;
+
+											return "translate(" + x + ", " + y + ")";
+									
+										})
+										.attr( "width", thisObj.grid.size.width )
+		          						.attr( "height", thisObj.grid.size.height )
+		          						.style( "fill", function(d) { return colorScale( d[ name ] ); });
+
+									totalMetrics++;
+
+								}
+
+								totalMetrics++;
+								
 							}
 							
-
 						},
 						enumerable: true,
 					    configurable: true, 
@@ -468,7 +484,7 @@ USG.visualization = {};
 				Tier1.prototype.constructor = Tier1;
 
 
-				//// Medium view, scrollable
+				// Medium view, scrollable
 				var Tier2 = function ( type , dataKey , key , dataset , htmlElem , metricSet  ) {
 					TierInstance.call(this, type , dataKey , key , dataset , htmlElem , metricSet );
 
@@ -1181,6 +1197,7 @@ USG.visualization = {};
 						
 						// Create metric
 						var thisMetric = this.metrics[ type ] = new MetricInstance( type );
+						thisObj.metricList.push( thisMetric );
 
 						// If has category type, add to that category
 						if ( thisMetric.category.name ) {
@@ -1197,17 +1214,23 @@ USG.visualization = {};
 
 						// Add to "uncategorized" 
 						} else {
+
 							thisObj.categories[ "uncategorized" ].add( thisMetric );
+
 						}
 
 					}
 				},
+
+				// Set domain for all metrics
 				setDomains: function ( dataset , dataLocation ) {
 					thisObj = this;
 
-
 					for( var prop in thisObj.metrics ){
+
+						// Set domain for specific dataset
 						thisObj.metrics[ prop ].setDomain( dataset , dataLocation );
+
 					}
 
 				},
@@ -1222,6 +1245,7 @@ USG.visualization = {};
 					return false;
 					
 				},
+
 				// Return ordered array of metrics organized by largest to smallest category
 				// Non permuted metric will be at the center of the array
 				// Items with a metric counterpart 
@@ -1275,9 +1299,6 @@ USG.visualization = {};
 						if(!categoriesToBeAdded[i][1].allString){
 							// Add metrics
 							var obj = categoriesToBeAdded[i][1];
-
-							// console.log(obj);
-							// console.log(obj.metricOrder);
 
 							for(var j = 0; j < obj.metricOrder.length; j++){
 								if(obj.metrics[ obj.metricOrder[ j ] ].dataType != "String"){
@@ -1444,6 +1465,37 @@ USG.visualization = {};
 
 					}
 
+				},
+				getMetricCount: function ( type ) {
+
+
+					if ( type ) {
+
+						var list = []; // List of grid objects 
+
+						if ( type === "grid" ) {
+
+							for ( var prop in this.metrics ) {
+
+								if ( this.metrics[prop].visualizationType.grid ) {
+
+									list.push(this.metrics[prop].steplabel);
+
+								}
+
+							}
+
+							return list.length;
+
+						}
+
+
+					} else {
+
+						return this.metricList.length;
+
+					}
+					
 				}
 			};
 
