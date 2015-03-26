@@ -6,13 +6,14 @@ USG.visualization = {};
 (function(){
 	// environment
 	this.environment = ( function(){
-		
+
 		/* Private Methods */
 		
 		// Class EnvironmentInstance
 		// Holds a dataset and associated visualizations for that dataset.
 		var EnvironmentInstance = function( callback ){
-			
+
+			this.createData = dataset;
 			this.datasets = []; // Array of dataset objects stored here ( loadData(); )
 			this.metricSet = metric.createSet(  ); // Set of all metrics used in this environment 
 			this.visualizations = []; // Array of visualization objects for this environment ( heatmap, etc. )
@@ -50,7 +51,8 @@ USG.visualization = {};
 				
 				var thisObj = this;
 				var thisNamespace = USG.visualization.environment; 
-				var dataset = thisObj.dataset;
+
+				// var dataset = thisObj.dataset;
 
 				d3.csv( dataLocation , function parseRows ( d ) {
 
@@ -86,7 +88,7 @@ USG.visualization = {};
 					}
 
 					// Add dataset
-					thisObj.datasets[ dataLocation ] = data;
+					thisObj.datasets[ dataLocation ] = thisObj.createData.create( data );
 
 					// Initialize metric domains
 					thisObj.metricSet.setDomains( thisObj.datasets[ dataLocation ], dataLocation );
@@ -104,6 +106,48 @@ USG.visualization = {};
 		var create = function( callback ){
 			return new EnvironmentInstance( callback );
 		};
+
+		var dataset = ( function(){
+			
+			var DatasetInstance = function ( data ) {
+				this.dataset = data; // Holds data 
+				this.metrics = []; // List of which metrics the data has
+			};
+			DatasetInstance.prototype = {
+				hasMetric: function ( metricName ) {
+
+				},
+				sortData: function ( byMetricType ){
+
+					var metricName = byMetricType;
+
+					var sortDataset = function ( a , b ) {
+
+						if (a[ metricName ] < b[ metricName ])
+						   return -1;
+						if (a[ metricName ] > b[ metricName ])
+						   return 1;
+						// a must be equal to b
+						return 0;
+
+					};
+
+					this.dataset.sort( sortDataset );
+
+				},
+				getData: function () {
+					return this.dataset;
+				}
+			};
+
+			var create = function( data ){
+				return new DatasetInstance( data );
+			};
+
+			return {
+				create: create
+			};
+		})();
 
 		// environment.heatmap
 		var heatmap = ( function(){
@@ -123,8 +167,10 @@ USG.visualization = {};
 
 				this.dataset = dataset;
 
-				this.colorscheme = USG.constants.colors.colorbrewer.Greys[9];
-
+				this.colorscheme = {
+					normal: USG.constants.colors.colorbrewer.Greys[9],
+					highlight: USG.constants.colors.colorbrewer.WtRd[9]
+				}
 				var thisObj = this;
 
 				var addHTML = function( tiers ) {
@@ -138,34 +184,31 @@ USG.visualization = {};
 					$( "#vizualizations-holder" ).append( html );
 				};
 
-				var visualizeTiers = function() {
+				var initializeTiers = function() {
 					if ( thisObj.tiers ) {
 						
 						for (var i = 0; i < thisObj.tiers.length; i++) {
-							thisObj.tiers[i].visualize();
+							thisObj.tiers[i].initialize();
 						};
 
 					}
 				};
-
-				var createTiers = function ( whichTiers ) {
-					for (var i = 0; i < whichTiers.length; i++) {
-						// Will append html to the heatmap container
-						thisObj.tiers[i] = tier.create( thisObj.dataKey, thisObj.key, ( whichTiers[i] ) , dataset , thisObj.key , thisObj.metricSet );
-					}
-				};
 				
-				var init = function ( config ) {
-					// default config
-					if( config == "default" ){
+				var init = function ( config, thisObj ) {
+					
+					thisObj.setMetricColorScheme();
 
-						thisObj.setMetricColorScheme();	
+					// default config	
+					if( config == "default" ){
 
 						console.log("Create heatmap with default config");
 
 						// Create new tier1, tier2, tier3
 						var defTiersCreated = $.Deferred();
-						createTiers([2, 1, 3]);
+						thisObj.createTiers([2, 1, 3]);
+						thisObj.connectTiers([0,1,2]);
+						thisObj.connectTiers([1,0,2]);
+						thisObj.connectTiers([2,0,1]);
 						defTiersCreated.resolve(thisObj.tiers);
 
 						// Load html for tiers
@@ -173,7 +216,7 @@ USG.visualization = {};
 
 							$.when( tiers[0].loadHTML() , tiers[1].loadHTML() , tiers[2].loadHTML() ).done(function () {
 								addHTML( tiers );
-								visualizeTiers( thisObj.categories );
+								initializeTiers( thisObj.categories );
 							}); 
 
 						});
@@ -181,7 +224,7 @@ USG.visualization = {};
 					}
 				}
 
-				init( config );
+				init( config , thisObj );
 
 				
 			};
@@ -190,6 +233,31 @@ USG.visualization = {};
 				setMetricColorScheme: function ( ) {
 				
 					this.metricSet.setColorScheme( this.dataKey , this.key , this.colorscheme );
+
+				}, 
+				createTiers: function ( whichTiers ) {
+					var thisObj = this;
+
+					for (var i = 0; i < whichTiers.length; i++) {
+						var index = thisObj.tiers.length; 
+						// Will append html to the heatmap container
+						thisObj.tiers.push ( tier.create( thisObj.dataKey, index, ( whichTiers[i] ) , thisObj.dataset , thisObj.key , thisObj.metricSet ) );
+						
+					}
+
+				},
+				// @Param: whichTiers. Array of the indexes of this.tiers[] to be connected.
+				// whichTiers[0] is the tier to be connected to whichTiers[i]
+				connectTiers: function ( whichTiers ) {
+
+					for(var i = 1; i < whichTiers.length; i++) {
+						var tier = this.tiers[ whichTiers[i] ];
+
+						this.tiers[ whichTiers[0] ].connect( tier );
+
+						console.log(whichTiers[0] + " connected to " + whichTiers[i]);
+					
+					}
 
 				}
 			};
@@ -227,7 +295,9 @@ USG.visualization = {};
 				// Generic tier
 				// Generic version of heatmap grid.
 				var TierInstance = function( type , dataKey , key , dataset , htmlElem , metricSet ){
+					
 					this.key = key;
+					this.parentKey = htmlElem;
 					this.dataKey = dataKey;
 					this.dataset = dataset;
 					this.metricSet = metricSet;
@@ -243,8 +313,12 @@ USG.visualization = {};
 
 
 					this.type = type;
+
 					this.visualizationType = "grid";
 
+					this.connectedTiers = [];
+
+					this.hiddenRows = [];
 
 				};
 				TierInstance.prototype = {
@@ -283,13 +357,28 @@ USG.visualization = {};
 						console.log( " Implement this method. " );
 
 					},
+					createsvg: function () { 
+
+						console.log( " Implement this method. " );
+
+					},
+					initialize: function ( ) {
+
+						this.createsvg();
+						this.visualize();
+							
+
+					},
 					getHTML: function (  ) {
 						return this.html.markup;
 					}, 
 					// Loops through all non-string metrics and executes the passed draw function 
-					draw: function ( drawFunction ) {
-						var currentMetricIndex = 0;
-						var thisObj = this;
+					draw: function ( drawFunction, selector ) {
+						var currentMetricIndex = 0,
+							thisObj = this;
+							nonPermutedMetricCount = 0,
+							categoryWithPermutedCount = 0,
+							permutedFlag = false;
 
 						for(var categoryIndex = 0; categoryIndex < thisObj.orderedMetrics.length ; categoryIndex++ ){
 							
@@ -303,23 +392,217 @@ USG.visualization = {};
 									
 									if( !thisObj.metricSet.isString( metricName ) ){
 
-										drawFunction( thisObj, categoryIndex , metricIndex , metricName, currentMetricIndex );
+										if( thisObj.metricSet.isPermuted( metricName ) ){
+
+											var currentMetricCount = currentMetricIndex - nonPermutedMetricCount;
+
+										} else {
+
+											var currentMetricCount = currentMetricIndex;
+
+										}
+
+										drawFunction(  thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount , categoryWithPermutedCount, selector );
 
 										currentMetricIndex++;
+
+										if( thisObj.metricSet.metrics[metricName].permuted.type != "permuted"  ){
+
+											nonPermutedMetricCount++;
+											permutedFlag = true;
+
+										}
 
 									}
 
 								}
+
 							}
-							
-							
-							
+							if(permutedFlag){
+								categoryWithPermutedCount++;
+								permutedFlag =  false;
+							}
+						
 						}
 					},
 					// Template for what a draw function could look like
 					drawFunction: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
 
 						console.log("Implement this method");
+
+					},
+					drawGrid: function ( ) {
+							var thisObj = this;
+
+							this.draw( thisObj.initializeBlocks );
+							this.draw( thisObj.drawBlocks );
+
+					},
+					initializeBlocks: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
+
+						var gridsvg = thisObj.svg.obj;
+
+						var nameClass = "." + metricName;
+
+						var dataset = thisObj.dataset.getData();
+
+						// Initialize this block
+						// Draw large grid
+						var columnObj = gridsvg.selectAll(nameClass);
+
+						columnObj
+							.data(dataset)
+							.enter()
+							.append("rect")
+							.attr("class", function(d, i){
+								return i + " "+metricName+" "+ metricName + i + " " + d['originalPassword']+" "+ d['permutedPassword']+" block hiderow";
+							})
+							.attr("id", function(d){return d['originalPassword'] + metricName;})
+							.on("mouseover", function(d, i){ 
+								return thisObj.hoverOver( d, metricName , this , "mouseover" ) 
+							})
+							.on("mouseout", function(d, i){
+								return thisObj.hoverOver( d, metricName , this , "mouseout" ) 
+							});
+
+					
+					},
+					drawBlocks: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
+
+						var svg = thisObj.svg.obj;
+						
+						var nameClass = "." + metricName;	
+						
+						var colorScale = thisObj.metricSet.getNormalColorScale( metricName , thisObj.dataKey , thisObj.parentKey );
+
+						// Initialize this block
+						// Draw large grid
+						var columnObj = svg.selectAll(nameClass);
+
+						columnObj
+							.attr("transform", function(d, i) {
+
+								return "translate(" + ((( (currentMetricIndex + (categoryIndex)) - ((thisObj.gridmetricSet.length + thisObj.orderedMetrics.length-1)/2)) * (thisObj.grid.size.width - .2)) + thisObj.svg.dimensions.widthMidpoint) + ", " + ((thisObj.grid.size.height * i) ) + ")";
+						
+							})
+							.attr("width", thisObj.grid.size.width)
+      						.attr("height", thisObj.grid.size.height)
+      						.style("fill", function(d) { return colorScale(d[metricName]); });
+			
+					},
+					// Connect tiers.
+					// @param tier: tier object to connect 
+					// Connected tiers will respond to events 
+					connect: function ( tier ) {
+
+						this.connectedTiers.push( tier );
+						
+					}, 
+					colorColumnRow: function ( metricName , type , selector , row ) {
+
+						var thisObj = this,
+					    svg = thisObj.svg.obj;
+					    thisObj.hoverType = type;
+						var columnClass = "." + metricName,
+						blocks = svg.selectAll(".block");
+
+						if(thisObj.hoverType == "mouseover") {
+
+							var colorScale = thisObj.metricSet.getHighlightColorScale( metricName , thisObj.dataKey , thisObj.parentKey );
+
+							// Dim non-highlighted blocks 
+							blocks.style("fill-opacity", .25);
+				    	
+				    	} else {
+
+				    		var colorScale = thisObj.metricSet.getNormalColorScale( metricName , thisObj.dataKey , thisObj.parentKey );
+
+				    		// Dim non-highlighted blocks 
+							blocks.style("fill-opacity", 1);
+				    	
+				    	}
+
+				    	
+
+					    // Column 
+				    	var columnObj = svg.selectAll(columnClass);
+						columnObj.style("fill", function(d) { return colorScale(d[ metricName ]); })
+							.style("fill-opacity", 1);
+
+						// Row 
+						var colorRow = function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex , nonPermutedMetricCount , selector ) {
+							
+							var rowClass = "." + metricName + row ;
+
+							var rowObj = svg.selectAll(rowClass);
+					    	
+					    	if(thisObj.hoverType == "mouseover") {
+
+								var colorScale = thisObj.metricSet.getHighlightColorScale( metricName , thisObj.dataKey , thisObj.parentKey );
+					    	
+					    	} else {
+
+					    		var colorScale = thisObj.metricSet.getNormalColorScale( metricName , thisObj.dataKey , thisObj.parentKey );
+					    	
+					    	}
+							
+
+							rowObj.style( "fill", function( d , i ){ return colorScale( d[ metricName ]) })
+								.style("fill-opacity", 1);
+
+						};
+
+						thisObj.draw( colorRow , row );
+
+					},
+					hoverOver: function (dataObj , name , obj , type) { 
+					    
+					    var thisObj = this,
+					    svg = thisObj.svg.obj;
+					    thisObj.hoverType = type;
+
+
+					    // Get name of current block 
+					    var element = d3.select(obj).attr("class"),
+					    className = element.split(" "),
+					    row = className[0],
+					    metricName = className[1],
+					    selector = className[2],
+					    columnClass = "." + metricName;
+
+					    thisObj.colorColumnRow( metricName , type , selector , row );
+					    
+					    // Color blocks for connected tiers
+					    for(var i = 0; i < thisObj.connectedTiers.length; i++){
+					    	
+					    	if( thisObj.connectedTiers[i].hover ) {
+					    		thisObj.connectedTiers[i].hover( metricName , type , selector , row );
+					    	}
+
+					    }
+					    
+					    
+
+					},
+					hover: function ( metricName , type , selector , row ) {
+
+						if( type === "mouseover" || type === "mouseout" ){
+
+							this.colorColumnRow( metricName , type , selector , row );
+
+						} 
+	
+					},
+					filterPasswords: function ( metricName, values ) {
+						var svg = this.svg.obj;
+
+						this.hiddenRows[metricName] =  svg.selectAll(".hiderow").filter(function(d) { return (d[metricName] < values[0] || d[metricName] > values[1]); });
+
+						svg.selectAll(".hiderow").style("opacity", 1);
+
+						for(var prop in this.hiddenRows){
+							this.hiddenRows[ prop ].style("opacity", 0);
+						}
 
 					}
 				};
@@ -348,10 +631,11 @@ USG.visualization = {};
 						// SVG
 						thisObj.obj = d3.selectAll(svgSelector).append("svg")
 							.attr("viewBox", thisObj.viewBox)
-							// .attr("overflow", "visible")
+							// .attr("overflow", "scroll")
 							.attr("height", thisObj.dimensions.height)
-					 			.attr("width", thisObj.dimensions.width)
-								.attr("preserveAspectRatio", "xMidYMin meet");
+				 		// 	.attr("width", thisObj.dimensions.width)
+							// .attr("preserveAspectRatio", "xMidYMin meet")
+							;
 
 						// Determine mid point of height and width 
 						thisObj.dimensions.heightMidpoint = thisObj.dimensions.height / 2;
@@ -387,14 +671,13 @@ USG.visualization = {};
 						
 					this.html.id = "#" + htmlElem;
 
-					console.log(this.html.id);
-
 				};
 				Tier1.prototype = Object.create( TierInstance.prototype, {
 					visualize: {
 						value: function ( ) {
-
-							this.createsvg();
+							var nameclass = this.html.id;
+							
+							$(nameclass).html('');
 							this.drawGrid();
 							
 						},
@@ -415,72 +698,19 @@ USG.visualization = {};
 					    configurable: true, 
 					    writable: true
 					},
-					drawGrid: { 
-						value: function () {
+					// hover: {
+					// 	value: function () {
+					// 		var id = "#" + this.html.id,
+					// 		height = $( "#vizualizations-holder" ).height(),
+					// 		width = $( id ).width();
 
-							var thisObj = this;
+					// 		this.svg = new Svg(height, width, id, this.html.parentContainer);
 
-							thisObj.draw( thisObj.initializeBlocks );
-							thisObj.draw( thisObj.drawBlocks );
-
-						},
-						enumerable: true,
-					    configurable: true, 
-					    writable: true
-					},
-					initializeBlocks: {
-						value: function ( thisObj, categoryIndex , metricIndex , metricName, currentMetricIndex ) {
-
-							var category = thisObj.orderedMetrics[categoryIndex].name;
-							var svg = thisObj.svg.obj;
-
-							var nameClass = "." + metricName;	
-
-							// Initialize this block
-							var columnObj = svg.selectAll(nameClass);
-
-							columnObj
-								.data(thisObj.dataset)
-								.enter()
-								.append("rect")
-								.attr("class", function(d, i){return "password"+i+" "+metricName+" "+d['originalPassword']+" "+ d['permutedPassword']+" "+metricName+"block";})
-								.attr("id", function(d){return d['originalPassword'] + metricName;})
-
-						},
-						enumerable: true,
-					    configurable: true, 
-					    writable: true
-					},
-					drawBlocks: {
-						value: function ( thisObj, categoryIndex , metricIndex , metricName, currentMetricIndex ) {
-
-							var svg = thisObj.svg.obj;
-
-							var nameClass = "." + metricName;
-
-							var colorScale = thisObj.metricSet.metrics[ metricName ].colorScale[thisObj.dataKey][thisObj.key];
-
-							// Initialize this block
-							// Draw large grid
-							var columnObj = svg.selectAll( nameClass );
-						
-							columnObj
-								.attr("transform", function(d, i) {
-
-									return "translate(" + ((( (currentMetricIndex) - ((thisObj.gridmetricSet.length + thisObj.orderedMetrics.length-1)/2)) * (thisObj.grid.size.width - .2)) + thisObj.svg.dimensions.widthMidpoint) + ", " + ((thisObj.grid.size.height * i) + thisObj.margin.top) + ")";
-							
-								})
-								.attr("width", thisObj.grid.size.width)
-          						.attr("height", thisObj.grid.size.height)
-          						.style("fill", function(d) { return colorScale(d[metricName]); });
-
-							
-							
-						},
-						enumerable: true,
-					    configurable: true, 
-					    writable: true
-					}
+					// 	},
+					// 	enumerable: true,
+					//     configurable: true, 
+					//     writable: true
+					// },
 				}); 
 				Tier1.prototype.constructor = Tier1;
 
@@ -518,12 +748,16 @@ USG.visualization = {};
 						}
 					}
 
-
+				
 				};
 				Tier2.prototype = Object.create( TierInstance.prototype, {
 					visualize: {
 						value: function ( ) {
-							this.createsvg();
+							var nameclass = this.columnsSvg.html.id + " svg";
+							$(nameclass).html('');
+
+							var nameclass = this.svg.html.id + " svg";
+							$(nameclass).html('');
 
 							this.drawLabels();
 							this.drawGrid();
@@ -542,6 +776,7 @@ USG.visualization = {};
 							
 							id = "#heatmap-tier2-grid-svg-container";
 							height = $( "#vizualizations-holder" ).height() - this.columnsSvg.dimensions.height
+							
 							width = $( id ).width();
 
 							this.svg = new Svg( height, width, id, this.html.parentContainer );
@@ -566,14 +801,14 @@ USG.visualization = {};
 					drawPasswordLabels: {
 						value: function ( ) {
 							var thisObj = this;
-							
+							var dataset = thisObj.dataset.getData();
 							var gridsvg = thisObj.svg.obj;
 							var columnssvg = thisObj.columnsSvg.obj ;
 
 
 							// Create password labels for main diagram
 							var passwordLabels = gridsvg.selectAll(".passwordLabels")
-								.data(thisObj.dataset)
+								.data(dataset)
 								.enter().append("text")
 								.text(function (d) { return d['originalPassword']; })
 								.style("text-anchor", "end")
@@ -584,7 +819,7 @@ USG.visualization = {};
 
 							// Create password labels for main diagram
 							var passwordLabelsPermuted = gridsvg.selectAll(".passwordLabelsPermuted")
-								.data(thisObj.dataset)
+								.data(dataset)
 								.enter().append("text")
 								.text(function (d) { return d['permutedPassword']; })
 								.style("text-anchor", "start")
@@ -609,24 +844,23 @@ USG.visualization = {};
 					},
 					drawColumnLabels: {
 						value: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
-							
 							var columnssvg = thisObj.columnsSvg.obj ;
 						
 							var id = "." + thisObj.orderedMetrics[categoryIndex].name + categoryIndex + "";
 							var labels = columnssvg.selectAll(id);
 
 							labels.append("text")
-							.text(function(d, i){
+								.text(function(d, i){
 
-								return thisObj.metricSet.metrics[metricName].label;
-							})
-							.style("text-anchor", "start")
-							.attr("transform", function() {
+									return thisObj.metricSet.metrics[metricName].label;
+								})
+								.style("text-anchor", "start")
+								.attr("transform", function() {
+									
+									return "translate(" + ((( (currentMetricIndex + categoryIndex) - ((thisObj.gridmetricSet.length + (thisObj.orderedMetrics.length - 1))/2)) * thisObj.grid.size.width) + ((thisObj.grid.size.width)/2) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + (thisObj.columnsSvg.dimensions.height - thisObj.labels.column.size.line - 5) + "), rotate(-70)";
 								
-								return "translate(" + ((( (currentMetricIndex + categoryIndex) - ((thisObj.gridmetricSet.length + (thisObj.orderedMetrics.length - 1))/2)) * thisObj.grid.size.width) + ((thisObj.grid.size.width)/2) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + (thisObj.columnsSvg.dimensions.height - thisObj.labels.column.size.line - 5) + "), rotate(-70)";
-							
-							})
-							.attr("class", function(){return "label"+metricName+" columnLabel mono axis step "+metricName});
+								})
+								.attr("class", function(){return "label"+metricName+" columnLabel mono axis step "+metricName});
 
 
 							labels.append("line")
@@ -642,71 +876,6 @@ USG.visualization = {};
 								
 								});
 						
-						},
-						enumerable: true,
-					    configurable: true, 
-					    writable: true
-					},
-					drawGrid:{
-						value: function ( ) {
-							var thisObj = this;
-
-							this.draw( thisObj.initializeBlocks );
-							this.draw( thisObj.drawBlocks );
-
-						},
-						enumerable: true,
-					    configurable: true, 
-					    writable: true
-					},
-					initializeBlocks: {
-						value: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
-							
-							var gridsvg = thisObj.svg.obj;
-
-							var nameClass = "." + metricName;	
-
-							// Initialize this block
-							// Draw large grid
-							var columnObj = gridsvg.selectAll(nameClass);
-
-							columnObj
-								.data(thisObj.dataset)
-								.enter()
-								.append("rect")
-								.attr("class", function(d, i){return "password"+i+" "+metricName+" "+d['originalPassword']+" "+ d['permutedPassword']+" "+metricName+"block hiderow";})
-								.attr("id", function(d){return d['originalPassword'] + metricName;})
-								.style("fill", "#000");
-
-						},
-						enumerable: true,
-					    configurable: true, 
-					    writable: true
-					},
-					drawBlocks: {
-						value: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
-
-							var gridsvg = thisObj.svg.obj;
-							var columnssvg = thisObj.columnsSvg.obj ;
-
-							var nameClass = "." + metricName;	
-							
-							var colorScale = thisObj.metricSet.metrics[metricName].colorScale[thisObj.dataKey][thisObj.key];
-
-							// Initialize this block
-							// Draw large grid
-							var columnObj = gridsvg.selectAll(nameClass);
-
-							columnObj
-								.attr("transform", function(d, i) {
-
-									return "translate(" + ((( (currentMetricIndex + (categoryIndex)) - ((thisObj.gridmetricSet.length + thisObj.orderedMetrics.length-1)/2)) * (thisObj.grid.size.width - .2)) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + ((thisObj.grid.size.height * i) + thisObj.grid.margin.top) + ")";
-							
-								})
-								.attr("width", thisObj.grid.size.width)
-          						.attr("height", thisObj.grid.size.height)
-          						.style("fill", function(d) { return colorScale(d[metricName]); });
-				
 						},
 						enumerable: true,
 					    configurable: true, 
@@ -740,8 +909,9 @@ USG.visualization = {};
 				Tier3.prototype = Object.create( TierInstance.prototype, {
 					visualize: {
 						value: function ( ) {
-							this.createsvg();
-							this.draw();
+
+							this.drawLabels();
+							this.drawBlocks();
 							this.initializeControls();
 
 						},
@@ -758,7 +928,7 @@ USG.visualization = {};
 
 							this.svg = new Svg( height, width, id, this.html.parentContainer )
 
-							this.grid.margin.left = this.svg.dimensions.width - (this.grid.dimensions.width * 10) + 10;
+							this.grid.margin.left = this.svg.dimensions.width - (this.grid.dimensions.width * 10) + 5;
 
 						},
 						enumerable: true,
@@ -767,8 +937,8 @@ USG.visualization = {};
 					}, 
 					initializeControls: {
 						value: function () {
-							thisObj = this;
-
+							var thisObj = this;
+							var dataset = thisObj.dataset.getData();
 							// About this dataset
 
 							// File displayed 
@@ -777,7 +947,7 @@ USG.visualization = {};
 
 							// Number of passwords
 							$('.about-dataset-holder').append('<tr><th>Number of passwords:<td id="numPasswords"></td></tr>');
-							$('#numPasswords').html(thisObj.dataset.length);
+							$('#numPasswords').html(dataset.length);
 
 							// Filter, Rank, Show/hide columns 
 							for(var prop in thisObj.metricSet.categories){
@@ -802,7 +972,7 @@ USG.visualization = {};
 										metricObj = thisObj.metricSet.metrics[metricName],
 										metricLabel = metricObj.label,
 										sliderlabelid =  metricName + '-sliderRange'
-										sliderid = metricName + '-slider';
+										sliderid = metricName;
 
 										// If the metric has a domain, add to GUI
 										if(metricObj.domainVal) {
@@ -835,11 +1005,13 @@ USG.visualization = {};
 												max: max,
 												values: [min,max],
 												slide: function( event, ui ) {
-													var type = $(event.target).attr("id");
 													
-													// filterPasswords( type, ui.values );
-													var labelID = "#" + type + "Range";
+													var metricName = $(event.target).attr("id");
+													
+													thisObj.filterPasswords( metricName, ui.values );
+													var labelID = "#" + metricName + "-sliderRange";
 													$(labelID).html(ui.values[0] + " - " + ui.values[1]);
+
 												}
 											});
 
@@ -859,6 +1031,9 @@ USG.visualization = {};
 
 										
 									}
+
+									
+
 									
 									// Filter: add space after category
 									$('.filter-holder').append('<div class="row"><hr></div>');
@@ -890,18 +1065,16 @@ USG.visualization = {};
 							// Add html
 
 							// Rank by
+							// Add event handler for sorting data
+							$(".sortBtn").click(function(){
+							    var id = $(this).children().attr("id");
+							    $('.display-btn').addClass('active');
+
+							    thisObj.sortPasswords( id );
+
+							});
 
 							// Show/hide columns
-
-						},
-						enumerable: true,
-					    configurable: true, 
-					    writable: true
-					},
-					draw: {
-						value: function () {
-							this.drawLabels();
-							this.drawBlocks();
 
 						},
 						enumerable: true,
@@ -912,72 +1085,117 @@ USG.visualization = {};
 						value: function () {
 							var thisObj = this;
 							var svg = thisObj.svg.obj;
-
 							var x = thisObj.grid.margin.left;
-							var top = thisObj.grid.margin.top;
-
 							// Create labels for columns
+							// Each category has <g> 
 							var breakdownLabel = svg.selectAll(".breakdownLabel")
 								.data(thisObj.orderedMetrics)
 								.enter().append("g").attr("class", function(d, i){
 									return d.name + i + " breakdownLabel";
 								});
 
-							var totalMetrics = 0; // Keeps track of total metrics used
-
-							for(var j = 0; j < thisObj.orderedMetrics.length; j++){
-								
-								breakdownLabel.append("text").text(function(d,i){
-									return 
-								})
+							svg.append("text")
+								.text("Original")
 								.attr("transform", function(){
-									return "translate(" + (x) + ", " + ((thisObj.grid.dimensions.height * totalMetrics) + top + (thisObj.grid.dimensions.height * .75)) + ")";
+									return "translate(" + (x + (thisObj.grid.dimensions.width * .8)) + ", " + (thisObj.grid.margin.top - 5) + ")rotate(-70)";
+								})
+								.attr("class", function(){
+									return "mono";
 								});
 
-								var className = "." + thisObj.orderedMetrics[j].name + j;
+							svg.append("text")
+								.text("Permuted")
+								.attr("transform", function(){
+									return "translate(" + (x + (thisObj.grid.dimensions.width * 4)) + ", " + (thisObj.grid.margin.top - 5) + ")rotate(-70)";
+								})
+								.attr("class", function(){
+									return "mono";
+								});
+
+							svg.append("text")
+								.text("Change")
+								.attr("transform", function(){
+									return "translate(" + (x + (thisObj.grid.dimensions.width * 6)) + ", " + (thisObj.grid.margin.top - 5) + ")rotate(-70)";
+								})
+								.attr("class", function(){
+									return "mono";
+								});
+
+							var draw = function (  thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount , categoryWithPermutedCount ) {
+
+								var svg = thisObj.svg.obj; 
+
+								var leftMargin = thisObj.grid.margin.left;
+								var topMargin = thisObj.grid.margin.top;
+
+								var name = thisObj.orderedMetrics[categoryIndex].metrics[metricIndex];
+
+								var className = "." + thisObj.orderedMetrics[categoryIndex].name + categoryIndex;
 								var label = svg.selectAll(className);
 								
-								for(var k = 0; k < thisObj.orderedMetrics[j].metrics.length; k++){	
-									var name = thisObj.orderedMetrics[j].metrics[k];
-									
-									if(thisObj.metricSet.metrics[name].permuted.type != "permuted"){
+								if(thisObj.metricSet.metrics[name].permuted.type != "permuted"){
 		
-										label.append("text")
-										.text(function() { 
-		
-											return thisObj.metricSet.metrics[name].label;
-									 
-										})
-										.style("text-anchor", "end")
-										.attr("transform", function() {
-											
-											return "translate(" + (x - 10) + ", " + ((thisObj.grid.dimensions.height * totalMetrics)+ top + (thisObj.grid.dimensions.height * .75)) + "), rotate(0)";
+									label.append("text")
+									.text(function() { 
+	
+										return thisObj.metricSet.metrics[name].label;
+								 
+									})
+									.style("text-anchor", "end")
+									.attr("transform", function() {
 										
-										})
-										.attr("class", function(d, i){return "breakdownlabel-"+name+" mono "+name});
+										return "translate(" + (leftMargin - 20) + ", " + ((thisObj.grid.dimensions.height * (currentMetricIndex + categoryIndex))+ topMargin + (thisObj.grid.dimensions.height * .75)) + "), rotate(0)";
+									
+									})
+									.attr("class", function(d, i){return "breakdownlabel-"+name+" mono "+name});
 
-										label.append("text")
+									label.append("text")
+									.text(function() { 
+	
+										return " 0 ";
+								 
+									})
+									.style("text-anchor", "middle")
+									.attr("transform", function() {
+										
+										return "translate(" + ((leftMargin - 1) ) + ", " + ((thisObj.grid.dimensions.height * (currentMetricIndex+ categoryIndex))+ topMargin + (thisObj.grid.dimensions.height * .75)) + "), rotate(0)";
+									
+									})
+									.attr("class", function(){return "breakdown-holder-"+name+" mono "+name});
+
+								} else {
+
+									label.append("text")
 										.text(function() { 
 		
 											return " 0 ";
 									 
 										})
 										.style("text-anchor", "middle")
-										.attr("transform", function() {
+										.attr("transform", function(d , i) {
 											
-											return "translate(" + ((x - 1) + (thisObj.grid.dimensions.width/2)) + ", " + ((thisObj.grid.dimensions.height * totalMetrics)+ top + (thisObj.grid.dimensions.height * .75)) + "), rotate(0)";
-										
+
+											var x = ((leftMargin - 1) + (thisObj.grid.dimensions.width * 4))
+											
+											var padding = (thisObj.grid.dimensions.height * .75);
+											var gridHeight = thisObj.grid.dimensions.height;
+
+											var offsetIndex = (nonPermutedMetricCount - categoryWithPermutedCount) - ( ( currentMetricIndex - nonPermutedMetricCount ) + ( categoryIndex - categoryWithPermutedCount ) );
+											var offset = gridHeight * offsetIndex;
+																						
+											var y = (offset + topMargin + padding);
+
+											return "translate(" + x + ", " + y + "), rotate(0)";
 										})
-										.attr("class", function(){return "breakdown-holder-original-"+name+" mono "+name});
-									}	
-		
-									totalMetrics++;
+										.attr("class", function(){return "breakdown-holder-"+name+" mono "+name});
 
 								}
 
-								totalMetrics++;
-
-							}
+							};
+								
+							thisObj.draw( draw );	
+		
+							thisObj.draw( thisObj.populateValues , 1 );
 							
 
 						},
@@ -990,127 +1208,161 @@ USG.visualization = {};
 							var thisObj = this;
 							var svg = thisObj.svg.obj;
 
-							var x = thisObj.grid.margin.left;
-							var top = thisObj.grid.margin.top;
+							var leftMargin = thisObj.grid.margin.left;
+							var topMargin = thisObj.grid.margin.top;
 
 
-							// Create labels for columns
+							// Create labels for blocks
 							var breakdownBlocks = svg.selectAll(".breakdownBlock")
 								.data(thisObj.orderedMetrics)
 								.enter().append("g").attr("class", function(d, i){
 									return d.name + i + "-block";
 								});
 
-							var totalMetrics = 0; // Keeps track of total metrics used
-							var totalMetricsPermuted = 0;
-
-							var numPairs = 0;
-							var originalFlag = false;
 							
-							for(var j = 0; j < thisObj.orderedMetrics.length; j++){
-								
-								breakdownBlocks
 
-								var className = "." + thisObj.orderedMetrics[j].name + j + "-block";
+							var draw = function (  thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount , categoryWithPermutedCount ) {
+
+										
+								var className = "." + thisObj.orderedMetrics[categoryIndex].name + categoryIndex + "-block";
 								var block = svg.selectAll(className);
 								var permutedFlag = false;
-								
+						
 
-								for(var k = 0; k < thisObj.orderedMetrics[j].metrics.length; k++){	
-									var name = thisObj.orderedMetrics[j].metrics[k];
+								if(thisObj.metricSet.metrics[metricName].permuted.type != "permuted"){
 									
-									if(thisObj.metricSet.metrics[name].permuted.type != "permuted"){
-										
-										block.append("rect").text(function(d,i){
-											return
-										})
-										.attr( "width", thisObj.grid.dimensions.width )
-										.attr( "height", thisObj.grid.dimensions.height )
-										.attr("transform", function(){
-											return "translate(" + (x + thisObj.grid.dimensions.width) + ", " + ((thisObj.grid.dimensions.height * totalMetrics) + top) + ")";
-										})
-										.attr("class", function(){return "breakdownblock"+name+" "+name});
-										
-										totalMetrics++;
-
-										permutedFlag = false;
-
-										if(thisObj.metricSet.metrics[name].permuted.type == "original"){
-											numPairs++;
-											originalFlag = true;
-											
-										}
-								
-									} else {
-
-										block.append("rect").text(function(d,i){
-											return
-										})
-										.attr( "width", thisObj.grid.dimensions.width )
-										.attr( "height", thisObj.grid.dimensions.height )
-										.attr("transform", function(){
-											return "translate(" + (x + (thisObj.grid.dimensions.width * 2)) + ", " + ((thisObj.grid.dimensions.height * (numPairs - totalMetricsPermuted + 1)) + top) + ")";
-										})
-										.attr("class", function(){return "breakdownblock"+name+" "+name});
-
-										totalMetricsPermuted++;
-
-										permutedFlag = true;
-										var permutedMetricFlag = true;
-									}
-		
-		
-								}	
-
-									totalMetrics++;
-
-									if(permutedFlag){
-										totalMetricsPermuted++;
-									}
-		
-							}
-
-							if(originalFlag && permutedMetricFlag){
-
-								svg.append("text")
-									.text("Original")
+									block.append("rect").text(function(d,i){
+										return
+									})
+									.attr( "width", thisObj.grid.dimensions.width )
+									.attr( "height", thisObj.grid.dimensions.height )
 									.attr("transform", function(){
-										return "translate(" + (x + (thisObj.grid.dimensions.width * 1.8)) + ", " + (thisObj.grid.margin.top - 5) + ")rotate(-70)";
+										return "translate(" + ((leftMargin - 1) + thisObj.grid.dimensions.width) + ", " + ((thisObj.grid.dimensions.height * (currentMetricIndex+ categoryIndex))+ topMargin) + "), rotate(0)";
 									})
-									.attr("class", function(){
-										return "mono";
-									});
-								svg.append("text")
-									.text("Permuted")
-									.attr("transform", function(){
-										return "translate(" + (x + (thisObj.grid.dimensions.width * 2.8)) + ", " + (thisObj.grid.margin.top - 5) + ")rotate(-70)";
-									})
-									.attr("class", function(){
-										return "mono";
-									});
-
-
-								svg.selectAll(".breakdownLabel").append("text")
-									.text(function() { 
-	
-										return " 0 ";
-								 
-									})
-									.style("text-anchor", "middle")
-									.attr("transform", function(d , i) {
-										
-										return "translate(" + ((x - 1) + (thisObj.grid.dimensions.width/2) + (thisObj.grid.dimensions.width*3)) + ", " + ((thisObj.grid.dimensions.height * i)+ top + (thisObj.grid.dimensions.height * .75)) + "), rotate(0)";
+									.attr("class", function(){return "block-"+ metricName + " " + metricName});
 									
-									})
-									.attr("class", function(){return "breakdown-holder-permuted-"+name+" mono "+name});
 							
+								} else {
+
+									block.append("rect").text(function(d,i){
+										return
+									})
+									.attr( "width", thisObj.grid.dimensions.width )
+									.attr( "height", thisObj.grid.dimensions.height )
+									.attr("transform", function(){
+											var x = ((leftMargin - 1) + (thisObj.grid.dimensions.width * 2))
+											
+											var padding = 0;
+											var gridHeight = thisObj.grid.dimensions.height;
+
+											var offsetIndex = (nonPermutedMetricCount - categoryWithPermutedCount) - ( ( currentMetricIndex - nonPermutedMetricCount ) + ( categoryIndex - categoryWithPermutedCount ) );
+											var offset = gridHeight * offsetIndex;
+																						
+											var y = (offset + topMargin + padding);
+
+											return "translate(" + x + ", " + y + "), rotate(0)";
+									})
+									.attr("class", function(){return "block-"+metricName+" "+metricName});
+
+								}
+
 							}
-								
+
+							thisObj.draw( draw );
+
+							thisObj.draw( thisObj.colorBlocks , 1 );
 
 						},
 						enumerable: true,
 					    configurable: true, 
 					    writable: true
+					},
+					hover: {
+						value: function ( metricName , type , selector , row ) {
+
+							if( row ){
+								this.draw( this.populateValues , row );
+								this.draw( this.colorBlocks , row );
+							}
+							
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					populateValues: {
+						value: function ( thisObj , categoryIndex , metricIndex , metricName , currentMetricIndex ,  nonPermutedMetricCount , categoryWithPermutedCount , selector ) {
+							
+							var svg = thisObj.svg.obj;
+							var dataset = thisObj.dataset.getData();
+							var data = dataset[selector];
+							
+							var rowClass = ".breakdown-holder-" + metricName ;
+
+							var rowObj = svg.selectAll(rowClass);
+					    	
+							rowObj.text( function( ){ return Math.floor(data[ metricName ]); });
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					colorBlocks: {
+						value: function ( thisObj , categoryIndex , metricIndex , metricName , currentMetricIndex ,  nonPermutedMetricCount , categoryWithPermutedCount , selector ) {
+							
+							var svg = thisObj.svg.obj;
+							var dataset = thisObj.dataset.getData();
+							var data = dataset[selector];
+							
+							var rowClass = ".block-" + metricName ;
+
+							var rowObj = svg.selectAll(rowClass);
+
+					    	var colorScale = thisObj.metricSet.getNormalColorScale( metricName , thisObj.dataKey , thisObj.parentKey );
+
+							rowObj.style( "fill", function( d , i ){ return colorScale( data[ metricName ]) });
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					filterPasswords: {
+						value: function ( metricName, values ) {
+							var thisObj = this;
+
+							// Color blocks for connected tiers
+						    for(var i = 0; i < thisObj.connectedTiers.length; i++){
+						    	if( thisObj.connectedTiers[i].filterPasswords ) {
+						    		thisObj.connectedTiers[i].filterPasswords( metricName, values );
+						    	}
+
+						    }
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					sortPasswords: {
+						value: function ( metricName ) {
+
+							console.log("Sort by " + metricName);
+
+							this.dataset.sortData( metricName );
+
+							// Color blocks for connected tiers
+						    for(var i = 0; i < this.connectedTiers.length; i++){
+						    	if( this.connectedTiers[i].visualize ) {
+						    		this.connectedTiers[i].visualize();
+						    	}
+
+						    }	
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true	
 					}
 				} ); 
 				Tier3.prototype.constructor = Tier3;
@@ -1380,9 +1632,6 @@ USG.visualization = {};
 
 							var metricArray = [];
 
-							// console.log(obj);
-							// console.log(obj.metricOrder);
-
 							for(var j = 0; j < obj.metricOrder.length; j++){
 								if(obj.metrics[ obj.metricOrder[ j ] ].dataType != "String"){
 									
@@ -1438,6 +1687,15 @@ USG.visualization = {};
 						return false;
 					}
 				},
+				isPermuted: function ( type ) {
+
+					if( this.metrics[ type ].permuted ) {
+						return true;
+					} else {
+						return false;
+					}
+
+				},
 				setColorScheme: function ( dataKey, heatmapKey , colorscheme ) {
 					
 					for( var prop in this.metrics ){	
@@ -1477,6 +1735,16 @@ USG.visualization = {};
 
 					}
 					
+				},
+				getNormalColorScale: function ( metricName , dataKey , visualizationKey ) {
+
+					return this.metrics[ metricName ].getNormalColorScale( dataKey , visualizationKey );
+
+				},
+				getHighlightColorScale: function ( metricName , dataKey , visualizationKey ) {
+
+					return this.metrics[ metricName ].getHighlightColorScale( dataKey , visualizationKey );
+
 				}
 			};
 
@@ -1609,8 +1877,9 @@ USG.visualization = {};
 
 			};
 			MetricInstance.prototype = {
-				setDomain: function ( dataset , dataLocation ) {
+				setDomain: function ( data , dataLocation ) {
 					var thisObj = this; // The current Metric Instance
+					var dataset = data.getData();
 					this.domainVal[ dataLocation ] = {}; // Stores max and min for the current dataset
 
 					// If domain type not null (meaning it's a string), set the domain values
@@ -1668,7 +1937,7 @@ USG.visualization = {};
 
 					}
 				},
-				setColorScheme: function ( key , heatmapKey , colorscheme ) { 
+				setColorScheme: function ( key , visualizationKey , colorscheme ) { 
 					var thisObj = this;
 
 					if ( thisObj.domainType ) {	
@@ -1679,12 +1948,27 @@ USG.visualization = {};
 	
 						if( !this.colorScale[ key ] ){
 							this.colorScale[ key ] = {};
+							this.colorScale[ key ][ visualizationKey ] = {};
 						}
 	
-						this.colorScale[ key ][ heatmapKey ] = d3.scale.quantile()
+						this.colorScale[ key ][ visualizationKey ].normal = d3.scale.quantile()
 							.domain(domain)
-							.range(colorscheme);
+							.range(colorscheme.normal);
+
+						this.colorScale[ key ][ visualizationKey ].highlight = d3.scale.quantile()
+							.domain(domain)
+							.range(colorscheme.highlight);
 					}
+				},
+				getNormalColorScale: function ( key , visualizationKey ) {
+
+					return this.colorScale[ key ][ visualizationKey ].normal;
+
+				},
+				getHighlightColorScale: function ( key , visualizationKey ) {
+
+					return this.colorScale[ key ][ visualizationKey ].highlight;
+
 				}
 			}
 			

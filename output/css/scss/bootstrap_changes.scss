@@ -7,3 +7,7 @@
 .panel-heading {
 	border-radius: 10px;
 }
+
+svg:not(:root) {
+	overflow: scroll;
+}
