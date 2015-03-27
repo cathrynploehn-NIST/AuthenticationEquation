@@ -197,6 +197,8 @@ USG.visualization = {};
 				var init = function ( config, thisObj ) {
 					
 					thisObj.setMetricColorScheme();
+					
+					thisObj.metricSet.setDefaultVisibility( thisObj.dataKey , thisObj.key );
 
 					// default config	
 					if( config == "default" ){
@@ -301,6 +303,7 @@ USG.visualization = {};
 					this.dataKey = dataKey;
 					this.dataset = dataset;
 					this.metricSet = metricSet;
+
 					this.gridmetricSet = metricSet.getOrderedMetrics();
 
 					this.orderedMetrics = metricSet.getOrderedCategories();
@@ -310,6 +313,7 @@ USG.visualization = {};
 						id: "",
 						url: "html/tier" + type + ".html"
 					};
+
 
 
 					this.type = type;
@@ -389,8 +393,9 @@ USG.visualization = {};
 								for(var metricIndex = 0; metricIndex < thisObj.orderedMetrics[categoryIndex].metrics.length; metricIndex++ ){
 									
 									var metricName = thisObj.orderedMetrics[categoryIndex].metrics[metricIndex];
+
 									
-									if( !thisObj.metricSet.isString( metricName ) ){
+									if( (!thisObj.metricSet.isString( metricName )) && (thisObj.metricSet.isVisible( metricName , thisObj.dataKey , thisObj.parentKey )) ){
 
 										if( thisObj.metricSet.isPermuted( metricName ) ){
 
@@ -580,9 +585,7 @@ USG.visualization = {};
 					    	}
 
 					    }
-					    
-					    
-
+				
 					},
 					hover: function ( metricName , type , selector , row ) {
 
@@ -605,11 +608,47 @@ USG.visualization = {};
 						}
 
 					},
-					hideColumn: function ( metricName ) {
+					toggleColumn: function ( metricName ) {
 
+						var classname = "." + metricName;
+						var svg = this.svg.obj;
+						
+						var gridSize = this.grid.size.width;
+						var opacity = 1;
+
+						// Is the column visible?
+						if( svg.select( classname ).attr( "opacity" ) = 0 ){
+
+							gridSize *= -1;
+							opacity = 0;
+							
+						}
+						
+						svg.selectAll( classname ).attr( "opacity", opacity )
+								.attr( "width", gridSize );
+						
+						this.MetricSet.setVisibility( metricName , this.dataKey , this.parentKey  , false );
 
 						
+						
+					},
+					shiftColumns: function ( ) {
+						var svg = thisObj.svg.obj;
+						
+						var nameClass = "." + metricName;	
+						
+						var colorScale = thisObj.metricSet.getNormalColorScale( metricName , thisObj.dataKey , thisObj.parentKey );
+
+						var columnObj = svg.selectAll(nameClass);
+
+						columnObj
+							.attr("transform", function(d, i) {
+
+								return "translate(" + ((( (currentMetricIndex + (categoryIndex)) - ((thisObj.gridmetricSet.length + thisObj.orderedMetrics.length-1)/2)) * (thisObj.grid.size.width - .2)) + thisObj.svg.dimensions.widthMidpoint) + ", " + ((thisObj.grid.size.height * i) ) + ")";
+						
+							});
 					}
+
 				};
 
 				var Svg = function ( height, width, id, parentContainer ) {
@@ -1537,6 +1576,20 @@ USG.visualization = {};
 					}
 
 				},
+
+				setDefaultVisibility: function ( key , visualizationKey ) {
+					var thisObj = this;
+
+					for( var prop in thisObj.metrics ){
+
+						// Set domain for specific dataset
+						thisObj.metrics[ prop ].setVisibility( key , visualizationKey , true );
+						
+
+					}
+
+				},
+
 				hasMetric: function ( type ) {
 					
 					if(this.metrics[ type ]){
@@ -1815,6 +1868,16 @@ USG.visualization = {};
 
 					return this.metrics[ metricName ].getHighlightColorScale( dataKey , visualizationKey );
 
+				},
+				setVisibility: function ( metricName , dataKey , visualizationKey , visible ) {
+
+					this.metrics[ metricName ].setVisibility( dataKey , visualizationKey , visible );
+
+				},
+				isVisible: function ( metricName , dataKey , visualizationKey ) {
+					
+					return this.metrics[ metricName ].isVisible( dataKey , visualizationKey );
+
 				}
 			};
 
@@ -1885,6 +1948,10 @@ USG.visualization = {};
 					this.colorScale = {
 						global: {}
 					};
+
+					this.visible = {
+						global: {}
+					}
 
 					var rPermuted = /(new)/g;
 					var label = ""; // Holds "new" if metric identified as permuted
@@ -2039,6 +2106,23 @@ USG.visualization = {};
 
 					return this.colorScale[ key ][ visualizationKey ].highlight;
 
+				},
+				setVisibility: function ( key , visualizationKey , visiblility ) {
+
+					if( !this.visible[ key ] ){
+
+						this.visible[ key ] = {};
+						this.visible[ key ][ visualizationKey ] = visiblility;
+
+					}
+
+					this.visible[ key ][ visualizationKey ] = visiblility;
+
+				},
+				isVisible: function ( key , visualizationKey ) {
+
+					return this.visible[ key ][ visualizationKey ];
+					
 				}
 			}
 			
