@@ -604,6 +604,11 @@ USG.visualization = {};
 							this.hiddenRows[ prop ].style("opacity", 0);
 						}
 
+					},
+					hideColumn: function ( metricName ) {
+
+
+						
 					}
 				};
 
@@ -647,7 +652,17 @@ USG.visualization = {};
 
 				};
 				Svg.prototype = {
+					updateViewboxY: function ( yVal ) {
+						var thisObj = this;
 
+						var svgSelector = "#" + thisObj.html.container.id + " " + thisObj.html.id;
+						svgSelector = $(svgSelector).toArray();
+
+						thisObj.viewBox = "0 " + yVal + " " + $( thisObj.html.id ).width() + " " + (thisObj.dimensions.height);
+						
+						// SVG
+						thisObj.obj.attr("viewBox", thisObj.viewBox);
+					}
 				};
 
 
@@ -679,6 +694,7 @@ USG.visualization = {};
 							
 							$(nameclass).html('');
 							this.drawGrid();
+							this.draw( this.addFunctionality )
 							
 						},
 						enumerable: true,
@@ -698,19 +714,40 @@ USG.visualization = {};
 					    configurable: true, 
 					    writable: true
 					},
-					// hover: {
-					// 	value: function () {
-					// 		var id = "#" + this.html.id,
-					// 		height = $( "#vizualizations-holder" ).height(),
-					// 		width = $( id ).width();
+					scrollTo: {
+						value: function ( row ) {
+							var thisObj = this;
 
-					// 		this.svg = new Svg(height, width, id, this.html.parentContainer);
+							// Color blocks for connected tiers
+						    for(var i = 0; i < thisObj.connectedTiers.length; i++){
+						    	if( thisObj.connectedTiers[i].scrollTo ) {
+						    		thisObj.connectedTiers[i].scrollTo( row );
+						    	}
 
-					// 	},
-					// 	enumerable: true,
-					//     configurable: true, 
-					//     writable: true
-					// },
+						    }
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					addFunctionality: {
+						value: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
+							var gridsvg = thisObj.svg.obj;
+
+						var nameClass = "." + metricName;
+
+						var dataset = thisObj.dataset.getData();
+
+						// Initialize this block
+						// Draw large grid
+						var columnObj = gridsvg.selectAll(nameClass);
+
+						columnObj
+							.on("click", function(d, i){
+								return thisObj.scrollTo( i ); 
+							});
+						}
+					}
 				}); 
 				Tier1.prototype.constructor = Tier1;
 
@@ -761,6 +798,7 @@ USG.visualization = {};
 
 							this.drawLabels();
 							this.drawGrid();
+
 						},
 						enumerable: true,
 					    configurable: true, 
@@ -880,7 +918,39 @@ USG.visualization = {};
 						enumerable: true,
 					    configurable: true, 
 					    writable: true
+					},
+					scrollTo: {
+						value: function ( row ) {
+							thisObj = this; 
+
+							console.log( row );
+
+							var svg = thisObj.svg.obj;
+							var classname = "." + row;
+
+							var position = $(classname).position();
+
+							var yVal = thisObj.grid.size.height * row;
+
+							console.log(yVal);
+
+							if(yVal > this.svg.dimensions.heightMidpoint){
+								yVal -= this.svg.dimensions.heightMidpoint; 
+							} else {
+								yVal = 0;
+							}
+
+							console.log(yVal);
+							
+							this.svg.updateViewboxY( yVal );
+						
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
 					}
+
 				}); 
 				Tier2.prototype.constructor = Tier2;
 
