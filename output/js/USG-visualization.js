@@ -92,7 +92,6 @@ USG.visualization = {};
 
 					// Initialize metric domains
 					thisObj.metricSet.setDomains( thisObj.datasets[ dataLocation ], dataLocation );
-					thisObj.metricSet.orderMetrics();
 					callback();
 
 				});
@@ -304,9 +303,9 @@ USG.visualization = {};
 					this.dataset = dataset;
 					this.metricSet = metricSet;
 
-					this.gridmetricSet = metricSet.getOrderedMetrics();
+					// this.gridmetricSet = metricSet.getOrderedMetrics();
 
-					this.orderedMetrics = metricSet.getOrderedCategories();
+					this.orderedMetrics = metricSet.orderCategories( dataKey , this.parentKey );
 
 					this.html = {
 						parentContainer: htmlElem,
@@ -384,6 +383,8 @@ USG.visualization = {};
 							categoryWithPermutedCount = 0,
 							permutedFlag = false;
 
+						thisObj.visibleColumnCount = 0;
+
 						for(var categoryIndex = 0; categoryIndex < thisObj.orderedMetrics.length ; categoryIndex++ ){
 							
 							var categoryName = thisObj.orderedMetrics[categoryIndex].name;
@@ -395,7 +396,7 @@ USG.visualization = {};
 									var metricName = thisObj.orderedMetrics[categoryIndex].metrics[metricIndex];
 
 									
-									if( (!thisObj.metricSet.isString( metricName )) && (thisObj.metricSet.isVisible( metricName , thisObj.dataKey , thisObj.parentKey )) ){
+									if( (!thisObj.metricSet.isString( metricName )) ){
 
 										if( thisObj.metricSet.isPermuted( metricName ) ){
 
@@ -415,6 +416,12 @@ USG.visualization = {};
 
 											nonPermutedMetricCount++;
 											permutedFlag = true;
+
+										}
+
+										if( thisObj.metricSet.isVisible( metricName , thisObj.dataKey , thisObj.parentKey ) ){
+
+											thisObj.visibleColumnCount++;
 
 										}
 
@@ -486,8 +493,17 @@ USG.visualization = {};
 
 						columnObj
 							.attr("transform", function(d, i) {
+								var distanceFromCenter = thisObj.visibleColumnCount + categoryIndex;
+								console.log(thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ));
 
-								return "translate(" + ((( (currentMetricIndex + (categoryIndex)) - ((thisObj.gridmetricSet.length + thisObj.orderedMetrics.length-1)/2)) * (thisObj.grid.size.width - .2)) + thisObj.svg.dimensions.widthMidpoint) + ", " + ((thisObj.grid.size.height * i) ) + ")";
+								var offsetIndex =  distanceFromCenter - ((thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) + thisObj.orderedMetrics.length-1)/2)
+
+								var offset = (offsetIndex * (thisObj.grid.size.width - .2));
+								var x = offset + thisObj.svg.dimensions.widthMidpoint;
+
+								var y = thisObj.grid.size.height * i
+
+								return "translate(" + x + ", " + y + ")";
 						
 							})
 							.attr("width", thisObj.grid.size.width)
@@ -608,31 +624,12 @@ USG.visualization = {};
 						}
 
 					},
-					toggleColumn: function ( metricName ) {
+					hideColumns: function ( metricName ) {
+						var thisObj = this;
+						thisObj.draw( thisObj.shiftColumns );
 
-						var classname = "." + metricName;
-						var svg = this.svg.obj;
-						
-						var gridSize = this.grid.size.width;
-						var opacity = 1;
-
-						// Is the column visible?
-						if( svg.select( classname ).attr( "opacity" ) = 0 ){
-
-							gridSize *= -1;
-							opacity = 0;
-							
-						}
-						
-						svg.selectAll( classname ).attr( "opacity", opacity )
-								.attr( "width", gridSize );
-						
-						this.MetricSet.setVisibility( metricName , this.dataKey , this.parentKey  , false );
-
-						
-						
 					},
-					shiftColumns: function ( ) {
+					shiftColumns: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
 						var svg = thisObj.svg.obj;
 						
 						var nameClass = "." + metricName;	
@@ -641,12 +638,29 @@ USG.visualization = {};
 
 						var columnObj = svg.selectAll(nameClass);
 
-						columnObj
-							.attr("transform", function(d, i) {
+						var isVisible = thisObj.metricSet.isVisible( metricName , thisObj.dataKey , thisObj.parentKey );
 
-								return "translate(" + ((( (currentMetricIndex + (categoryIndex)) - ((thisObj.gridmetricSet.length + thisObj.orderedMetrics.length-1)/2)) * (thisObj.grid.size.width - .2)) + thisObj.svg.dimensions.widthMidpoint) + ", " + ((thisObj.grid.size.height * i) ) + ")";
+						if( isVisible ){
+							columnObj
+								.attr("transform", function(d, i) {
+									var distanceFromCenter = thisObj.visibleColumnCount + categoryIndex;
+									console.log(thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ));
+									var offsetIndex =  distanceFromCenter - ((thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) + thisObj.orderedMetrics.length-1)/2)
+
+									var offset = (offsetIndex * (thisObj.grid.size.width - .2));
+									var x = offset + thisObj.svg.dimensions.widthMidpoint;
+
+									var y = thisObj.grid.size.height * i
+
+									return "translate(" + x + ", " + y + ")";
+							
+								});
+						} else {
+
+							
+							
+						}
 						
-							});
 					}
 
 				};
@@ -889,7 +903,7 @@ USG.visualization = {};
 								.enter().append("text")
 								.text(function (d) { return d['originalPassword']; })
 								.style("text-anchor", "end")
-								.attr("transform", function (d, i) { return "translate(" + (( -1 * thisObj.grid.size.width * ( (thisObj.gridmetricSet.length +  thisObj.orderedMetrics.length - 1)/2)) - thisObj.labels.password.margin.left + thisObj.svg.dimensions.widthMidpoint) + "," +  ((i * thisObj.grid.size.height) + thisObj.grid.margin.top + (thisObj.grid.size.height * .8)) + ")";
+								.attr("transform", function (d, i) { return "translate(" + (( -1 * thisObj.grid.size.width * ( (thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) +  thisObj.orderedMetrics.length - 1)/2)) - thisObj.labels.password.margin.left + thisObj.svg.dimensions.widthMidpoint) + "," +  ((i * thisObj.grid.size.height) + thisObj.grid.margin.top + (thisObj.grid.size.height * .8)) + ")";
 								})
 								.attr("class", function (d, i) { return "password mono hiderow" })
 								.attr("id", function (d, i) { return "labelpassword"+i; });
@@ -900,7 +914,7 @@ USG.visualization = {};
 								.enter().append("text")
 								.text(function (d) { return d['permutedPassword']; })
 								.style("text-anchor", "start")
-								.attr("transform", function (d, i) { return "translate(" + (( thisObj.grid.size.width * ( (thisObj.gridmetricSet.length +  thisObj.orderedMetrics.length - 1)/2)) + thisObj.labels.password.margin.left + thisObj.svg.dimensions.widthMidpoint) + "," +  ((i * thisObj.grid.size.height) + thisObj.grid.margin.top + (thisObj.grid.size.height * .8)) + ")";
+								.attr("transform", function (d, i) { return "translate(" + (( thisObj.grid.size.width * ( (thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) +  thisObj.orderedMetrics.length - 1)/2)) + thisObj.labels.password.margin.left + thisObj.svg.dimensions.widthMidpoint) + "," +  ((i * thisObj.grid.size.height) + thisObj.grid.margin.top + (thisObj.grid.size.height * .8)) + ")";
 								})
 								.attr("class", function (d, i) { return "password mono hiderow" })
 								.attr("id", function (d, i) { return "labelpassword"+i; });	
@@ -934,7 +948,7 @@ USG.visualization = {};
 								.style("text-anchor", "start")
 								.attr("transform", function() {
 									
-									return "translate(" + ((( (currentMetricIndex + categoryIndex) - ((thisObj.gridmetricSet.length + (thisObj.orderedMetrics.length - 1))/2)) * thisObj.grid.size.width) + ((thisObj.grid.size.width)/2) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + (thisObj.columnsSvg.dimensions.height - thisObj.labels.column.size.line - 5) + "), rotate(-70)";
+									return "translate(" + ((( (currentMetricIndex + categoryIndex) - ((thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) + (thisObj.orderedMetrics.length - 1))/2)) * thisObj.grid.size.width) + ((thisObj.grid.size.width)/2) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + (thisObj.columnsSvg.dimensions.height - thisObj.labels.column.size.line - 5) + "), rotate(-70)";
 								
 								})
 								.attr("class", function(){return "label"+metricName+" columnLabel mono axis step "+metricName});
@@ -949,7 +963,7 @@ USG.visualization = {};
 								.attr("stroke-opacity", 0.2)
 								.attr("transform", function(d, i) {
 									
-									return "translate(" + ((( (currentMetricIndex + categoryIndex) - ((thisObj.gridmetricSet.length + (thisObj.orderedMetrics.length-1))/2)) * thisObj.grid.size.width) + (thisObj.grid.size.width/2) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + thisObj.columnsSvg.dimensions.height + "), rotate(-90)";
+									return "translate(" + ((( (currentMetricIndex + categoryIndex) - ((thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) + (thisObj.orderedMetrics.length-1))/2)) * thisObj.grid.size.width) + (thisObj.grid.size.width/2) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + thisObj.columnsSvg.dimensions.height + "), rotate(-90)";
 								
 								});
 						
@@ -1033,7 +1047,7 @@ USG.visualization = {};
 							var thisObj = this;
 							var id = "#heatmap-tier3-svg-container",
 							width = $( id ).width(),
-							height = (thisObj.grid.dimensions.height * thisObj.gridmetricSet.length) + 50 ;
+							height = (thisObj.grid.dimensions.height * thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" )) + 50 ;
 
 							this.svg = new Svg( height, width, id, this.html.parentContainer )
 
@@ -1128,10 +1142,11 @@ USG.visualization = {};
 											// Rank by 
 											$('.rank-holder').append('<label class="sortBtn btn btn-xs btn-default btn-block"><input type="radio" name="options" id="' + metricName + '">' + metricLabel + '</label>');
 
+
 											// Show only columns visible in the grid ( gridmetricSet )
-											if( thisObj.gridmetricSet.indexOf(metricName) > -1 ){
+											if( thisObj.metricSet.metrics[metricName].dataType != "String" ){
 												// Show/hide Columns
-												$( '.hide-columns-holder' ).append( '<label class="btn btn-xs btn-block btn-default active display-btn" id="' + metricName + 'hide-column" style="margin:2px;"><input type="checkbox">' + metricLabel + '</label>' );
+												$( '.hide-columns-holder' ).append( '<label class="btn btn-xs btn-block btn-default active hide-column-btn" id="' + metricName + '-hide-column" style="margin:2px;"><input type="checkbox">' + metricLabel + '</label>' );
 											}
 											
 
@@ -1150,28 +1165,25 @@ USG.visualization = {};
 
 
 									// Hide columns: add "Hide All" button
-									$('.hide-columns-holder').append('<br><label class="btn btn-xs btn-block btn-default active display-btn" id="' + prop + 'hide-column" style="margin:2px;"><input type="checkbox"> Hide All </label>');
+									$('.hide-columns-holder').append('<br><label class="btn btn-xs btn-block btn-default active hide-column-btn" id="' + prop + '-hide-column" style="margin:2px;"><input type="checkbox"> Hide All </label>');
 							}
 							
 						}
 
-						html += '</div>';
+							html += '</div>';
 
-						$('.filter-holder').append(html);
+							$('.filter-holder').append(html);
 
-						for(var prop in thisObj.metricSet.categories){
-							if( thisObj.metricSet.categories[prop].metricOrder.length != 0 && !thisObj.metricSet.categories[prop].allString){
+							for(var prop in thisObj.metricSet.categories){
+								if( thisObj.metricSet.categories[prop].metricOrder.length != 0 && !thisObj.metricSet.categories[prop].allString){
 
-								for( var i = 0; i < thisObj.metricSet.categories[prop].metricOrder.length; i++  ){
-									var metricName = thisObj.metricSet.categories[prop].metricOrder[i],
-									metricObj = thisObj.metricSet.metrics[metricName];
-									
+									for( var i = 0; i < thisObj.metricSet.categories[prop].metricOrder.length; i++  ){
+										var metricName = thisObj.metricSet.categories[prop].metricOrder[i],
+										metricObj = thisObj.metricSet.metrics[metricName];
+										
+									}
 								}
 							}
-						}
-									
-
-							// Add html
 
 							// Rank by
 							// Add event handler for sorting data
@@ -1184,6 +1196,12 @@ USG.visualization = {};
 							});
 
 							// Show/hide columns
+							$(".hide-column-btn").click(function(){
+								var id = $(this).attr("id");
+								id = id.replace("-hide-column", "");
+								
+								thisObj.triggerHideColumns( id );
+							});
 
 						},
 						enumerable: true,
@@ -1472,6 +1490,40 @@ USG.visualization = {};
 						enumerable: true,
 					    configurable: true, 
 					    writable: true	
+					},
+					hideColumns: {
+						value: function ( metricName ) {
+
+
+								
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					triggerHideColumns: {
+						value: function ( metricName ) {
+							console.log(metricName);
+
+							var thisObj = this;
+
+							thisObj.metricSet.setVisibility( metricName , this.dataKey , this.parentKey  , false );
+							thisObj.metricSet.changeCount( this.dataKey , this.parentKey , "visible" , false );
+
+							thisObj.hideColumns( metricName );
+
+							// Color blocks for connected tiers
+						    for(var i = 0; i < thisObj.connectedTiers.length; i++){
+						    	if( thisObj.connectedTiers[i].hideColumns ) {
+						    		thisObj.connectedTiers[i].hideColumns( metricName );
+						    	}
+
+						    }
+								
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
 					}
 				} ); 
 				Tier3.prototype.constructor = Tier3;
@@ -1523,6 +1575,8 @@ USG.visualization = {};
 				this.metrics = {};
 				this.metricList = [];
 				this.categories = [];
+
+				this.count = {};
 
 				var init = function (thisObj) {
 					thisObj.categories[ "uncategorized" ] = new Category ( "uncategorized" );
@@ -1601,109 +1655,156 @@ USG.visualization = {};
 					return false;
 					
 				},
+				getCount: function ( key , visualizationKey, type ) {
+					
+					if( this.count[ key ][ visualizationKey ] ) {
+						if( type == "visible" ){
 
+							return this.count[ key ][ visualizationKey ].visible;
+
+						} else {
+	
+							return this.count[ key ][ visualizationKey ].total;
+
+						}
+						
+					}
+
+					console.log("Count for " + visualizationKey + ", " + type + " not set.")
+
+				},
+				changeCount: function ( key , visualizationKey , type , increase ) {
+					
+					if( increase ) {
+						var increment = 1;
+					} else {
+						var increment = -1;
+					}
+
+					console.log(this.count);
+
+					if( this.count[ key ][ visualizationKey ] ) {
+						if( type == "visible" ){
+
+							this.count[ key ][ visualizationKey ].visible += increment;
+							console.log("Count changed to " + this.count[ key ][ visualizationKey ].visible);
+
+						} else {
+	
+							this.count[ key ][ visualizationKey ].total += increment;
+
+						}
+						
+					}
+
+
+					
+				},
 				// Return ordered array of metrics organized by largest to smallest category
 				// Non permuted metric will be at the center of the array
 				// Items with a metric counterpart 
 				// 	@param: String[] containing category names 
-				orderMetrics: function ( ) {
+				// orderMetrics: function ( ) {
 					
-					var categoryArray = []; // Used for sorting categories by size
-					var categoriesToBeAdded = []; // Holds categories that don't have permuted pairs
-					this.orderedMetrics = []; // Ordered metric array
+				// 	var categoryArray = []; // Used for sorting categories by size
+				// 	var categoriesToBeAdded = []; // Holds categories that don't have permuted pairs
+				// 	this.orderedMetrics = []; // Ordered metric array
 					
-					// Add categories to an array to be sorted
-					for(var prop in this.categories){
-						categoryArray.push( [ prop , this.categories[ prop ] ] );
-					}
+				// 	// Add categories to an array to be sorted
+				// 	for(var prop in this.categories){
+				// 		categoryArray.push( [ prop , this.categories[ prop ] ] );
+				// 	}
 
-					// Sort categories from smallest to largest
-					categoryArray.sort(function(a, b){
+				// 	// Sort categories from smallest to largest
+				// 	categoryArray.sort(function(a, b){
 
-						var a = a[1];
-						var b = b[1];
-						return a.metricOrder.length - b.metricOrder.length;
+				// 		var a = a[1];
+				// 		var b = b[1];
+				// 		return a.metricOrder.length - b.metricOrder.length;
 
-					});
+				// 	});
 
-					// Start with the largest category and add to the array
-					// Add metrics with permuted pairs first
-					// Original metrics
-					for( var i = categoryArray.length - 1; i > 0 ; i-- ) {
-						// Add original 
-						if( categoryArray[i][1].isPermuted ){
+				// 	// Start with the largest category and add to the array
+				// 	// Add metrics with permuted pairs first
+				// 	// Original metrics
+				// 	for( var i = categoryArray.length - 1; i > 0 ; i-- ) {
+				// 		// Add original 
+				// 		if( categoryArray[i][1].isPermuted ){
 
-							var obj = categoryArray[i][1];
+				// 			var obj = categoryArray[i][1];
 
-							for(var j = 0; j < obj.metricsOriginal.length; j++){
+				// 			for(var j = 0; j < obj.metricsOriginal.length; j++){
 
-								this.orderedMetrics.push( obj.metricsOriginal[ j ] );
+				// 				this.orderedMetrics.push( obj.metricsOriginal[ j ] );
 
-							}
+				// 			}
 
 
-						} else {
+				// 		} else {
 
-							categoriesToBeAdded.push( categoryArray[i] );
+				// 			categoriesToBeAdded.push( categoryArray[i] );
 
-						}
+				// 		}
 				
-					}
+				// 	}
 
-					// Add metrics without permuted pairs
-					for( var i = 0; i < categoriesToBeAdded.length; i++ ) {
-						if(!categoriesToBeAdded[i][1].allString){
-							// Add metrics
-							var obj = categoriesToBeAdded[i][1];
+				// 	// Add metrics without permuted pairs
+				// 	for( var i = 0; i < categoriesToBeAdded.length; i++ ) {
+				// 		if(!categoriesToBeAdded[i][1].allString){
+				// 			// Add metrics
+				// 			var obj = categoriesToBeAdded[i][1];
 
-							for(var j = 0; j < obj.metricOrder.length; j++){
-								if(obj.metrics[ obj.metricOrder[ j ] ].dataType != "String"){
+				// 			for(var j = 0; j < obj.metricOrder.length; j++){
+				// 				if(obj.metrics[ obj.metricOrder[ j ] ].dataType != "String"){
 									
-									this.orderedMetrics.push( obj.metricOrder[ j ] );
+				// 					this.orderedMetrics.push( obj.metricOrder[ j ] );
 
-								}
-							} 
-						}
+				// 				}
+				// 			} 
+				// 		}
 							
 
 						
-					}
+				// 	}
 
-					// Add metrics with permuted pairs again
-					// Permuted metrics
-					for( var i = 0; i < categoryArray.length ; i++ ) {
+				// 	// Add metrics with permuted pairs again
+				// 	// Permuted metrics
+				// 	for( var i = 0; i < categoryArray.length ; i++ ) {
 						
-						// Add permuted 
-						if( categoryArray[i][1].isPermuted ){
-							var obj = categoryArray[i][1];
+				// 		// Add permuted 
+				// 		if( categoryArray[i][1].isPermuted ){
+				// 			var obj = categoryArray[i][1];
 
-							for(var j = obj.metricsPermuted.length-1; j > -1 ; j--){
+				// 			for(var j = obj.metricsPermuted.length-1; j > -1 ; j--){
 
-								this.orderedMetrics.push( obj.metricsPermuted[ j ] );
+				// 				this.orderedMetrics.push( obj.metricsPermuted[ j ] );
 
-							}
-						}
+				// 			}
+				// 		}
 
 						
-					}
+				// 	}
 
-					return this.orderedMetrics;
-					
-				
-				},
-				getOrderedMetrics: function ( ) {
-					if( !this.orderedMetrics ) {
-						return this.orderMetrics();
-					} else {
-						return this.orderedMetrics;
-					}
-				},
-				orderCategories: function ( ) {
+				// 	return this.orderedMetrics;
+				// },
+				// getOrderedMetrics: function ( ) {
+				// 	if( !this.orderedMetrics ) {
+				// 		return this.orderMetrics();
+				// 	} else {
+				// 		return this.orderedMetrics;
+				// 	}
+				// },
+				orderCategories: function ( key , visualizationKey ) {
 					
 					var categoryArray = []; // Used for sorting categories by size
 					var categoriesToBeAdded = []; // Holds categories that don't have permuted pairs
 					this.orderedCategories = []; // Ordered metric array
-					
+
+					this.count[key] = {};
+
+					var totalCount = 0;
+					var visibleCount = 0;
+
 					// Add categories to an array to be sorted
 					for(var prop in this.categories){
 						categoryArray.push( [ prop , this.categories[ prop ] ] );
@@ -1731,9 +1832,16 @@ USG.visualization = {};
 							
 
 							for(var j = 0; j < obj.metricsOriginal.length; j++){
+								if(obj.metrics[ obj.metricOrder[ j ] ].dataType != "String"){
 
-								metricArray.push( obj.metricsOriginal[ j ] );
+									metricArray.push( obj.metricsOriginal[ j ] );
+									totalCount++;
 
+									if( obj.metrics[ obj.metricOrder[ j ] ].isVisible( key , visualizationKey ) ){
+										visibleCount++;
+									}
+
+								}
 							}
 
 							// Add category
@@ -1759,7 +1867,11 @@ USG.visualization = {};
 								if(obj.metrics[ obj.metricOrder[ j ] ].dataType != "String"){
 									
 									metricArray.push( obj.metricOrder[ j ] );
+									totalCount++;
 
+									if( obj.metrics[ obj.metricOrder[ j ] ].isVisible( key , visualizationKey ) ){
+										visibleCount++;
+									}
 								}
 							}
 
@@ -1780,8 +1892,15 @@ USG.visualization = {};
 							var metricArray = [];
 
 							for(var j = obj.metricsPermuted.length-1; j > -1 ; j--){
+								if(obj.metrics[ obj.metricOrder[ j ] ].dataType != "String"){
 
-								metricArray.push( obj.metricsPermuted[ j ] );
+									metricArray.push( obj.metricsPermuted[ j ] );
+									totalCount++;
+
+									if( obj.metrics[ obj.metricOrder[ j ] ].isVisible( key , visualizationKey ) ){
+										visibleCount++;
+									}
+								}
 
 							}
 
@@ -1790,16 +1909,24 @@ USG.visualization = {};
 						}
 
 					}
+					
+					this.count[key][visualizationKey] = {
+						visible: visibleCount,
+						total: totalCount
+					};
 
 					return this.orderedCategories;
 			
 				},
-				getOrderedCategories: function ( ) {
+				getOrderedCategories: function ( key , visualizationKey ) {
 					if( !this.orderedCategories ) {
 
 						return this.orderCategories();
+
 					} else {
+
 						return this.orderedCategories;
+					
 					}
 				},
 				isString: function ( type ) {
@@ -1828,37 +1955,37 @@ USG.visualization = {};
 					}
 
 				},
-				getMetricCount: function ( type ) {
+				// getMetricCount: function ( type ) {
 
 
-					if ( type ) {
+				// 	if ( type ) {
 
-						var list = []; // List of grid objects 
+				// 		var list = []; // List of grid objects 
 
-						if ( type === "grid" ) {
+				// 		if ( type === "grid" ) {
 
-							for ( var prop in this.metrics ) {
+				// 			for ( var prop in this.metrics ) {
 
-								if ( this.metrics[prop].visualizationType.grid ) {
+				// 				if ( this.metrics[prop].visualizationType.grid ) {
 
-									list.push(this.metrics[prop].label);
+				// 					list.push(this.metrics[prop].label);
 
-								}
+				// 				}
 
-							}
+				// 			}
 
-							return list.length;
+				// 			return list.length;
 
-						}
+				// 		}
 
 
-					} else {
+				// 	} else {
 
-						return this.metricList.length;
+				// 		return this.metricList.length;
 
-					}
+				// 	}
 					
-				},
+				// },
 				getNormalColorScale: function ( metricName , dataKey , visualizationKey ) {
 
 					return this.metrics[ metricName ].getNormalColorScale( dataKey , visualizationKey );
