@@ -163,6 +163,9 @@ USG.visualization = {};
 
 				this.tiers = [];
 				this.metricSet = metricSet;
+				this.metrics = {
+					hidden: {}
+				};
 
 				this.dataset = dataset;
 
@@ -170,6 +173,8 @@ USG.visualization = {};
 					normal: USG.constants.colors.colorbrewer.Greys[9],
 					highlight: USG.constants.colors.colorbrewer.WtRd[9]
 				}
+
+
 				var thisObj = this;
 
 				var addHTML = function( tiers ) {
@@ -380,7 +385,6 @@ USG.visualization = {};
 						var currentMetricIndex = 0,
 							thisObj = this;
 							nonPermutedMetricCount = 0,
-							categoryWithPermutedCount = 0,
 							permutedFlag = false;
 
 						thisObj.visibleColumnCount = 0;
@@ -408,14 +412,22 @@ USG.visualization = {};
 
 										}
 
-										drawFunction(  thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount , categoryWithPermutedCount, selector );
+										// Determine column x value
+										var distanceFromCenter = thisObj.visibleColumnCount + categoryIndex;
+
+										var offsetIndex =  distanceFromCenter - ((thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) + thisObj.orderedMetrics.length-1)/2)
+
+										var offset = (offsetIndex * (thisObj.grid.size.width - .2));
+										var x = offset + thisObj.svg.dimensions.widthMidpoint;
+
+
+										drawFunction(  thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount , selector , x );
 
 										currentMetricIndex++;
 
 										if( thisObj.metricSet.metrics[metricName].permuted.type != "permuted"  ){
 
 											nonPermutedMetricCount++;
-											permutedFlag = true;
 
 										}
 
@@ -429,10 +441,6 @@ USG.visualization = {};
 
 								}
 
-							}
-							if(permutedFlag){
-								categoryWithPermutedCount++;
-								permutedFlag =  false;
 							}
 						
 						}
@@ -479,7 +487,7 @@ USG.visualization = {};
 
 					
 					},
-					drawBlocks: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
+					drawBlocks: function ( thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount , selector , x ) {
 
 						var svg = thisObj.svg.obj;
 						
@@ -493,22 +501,16 @@ USG.visualization = {};
 
 						columnObj
 							.attr("transform", function(d, i) {
-								var distanceFromCenter = thisObj.visibleColumnCount + categoryIndex;
-								console.log(thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ));
-
-								var offsetIndex =  distanceFromCenter - ((thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) + thisObj.orderedMetrics.length-1)/2)
-
-								var offset = (offsetIndex * (thisObj.grid.size.width - .2));
-								var x = offset + thisObj.svg.dimensions.widthMidpoint;
 
 								var y = thisObj.grid.size.height * i
 
 								return "translate(" + x + ", " + y + ")";
 						
 							})
-							.attr("width", thisObj.grid.size.width)
       						.attr("height", thisObj.grid.size.height)
       						.style("fill", function(d) { return colorScale(d[metricName]); });
+
+      					thisObj.shiftColumns( thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount , selector , x );
 			
 					},
 					// Connect tiers.
@@ -629,35 +631,30 @@ USG.visualization = {};
 						thisObj.draw( thisObj.shiftColumns );
 
 					},
-					shiftColumns: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
+					shiftColumns: function ( thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount , selector , x ) {
+
+						var visible = thisObj.metricSet.isVisible( metricName , thisObj.dataKey , thisObj.parentKey );
 						var svg = thisObj.svg.obj;
 						
 						var nameClass = "." + metricName;	
-						
-						var colorScale = thisObj.metricSet.getNormalColorScale( metricName , thisObj.dataKey , thisObj.parentKey );
 
-						var columnObj = svg.selectAll(nameClass);
+						var obj = svg.selectAll(nameClass);
 
-						var isVisible = thisObj.metricSet.isVisible( metricName , thisObj.dataKey , thisObj.parentKey );
-
-						if( isVisible ){
-							columnObj
+						if( visible ){
+							obj
+								.attr("width", thisObj.grid.size.width)
 								.attr("transform", function(d, i) {
-									var distanceFromCenter = thisObj.visibleColumnCount + categoryIndex;
-									console.log(thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ));
-									var offsetIndex =  distanceFromCenter - ((thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) + thisObj.orderedMetrics.length-1)/2)
-
-									var offset = (offsetIndex * (thisObj.grid.size.width - .2));
-									var x = offset + thisObj.svg.dimensions.widthMidpoint;
 
 									var y = thisObj.grid.size.height * i
 
 									return "translate(" + x + ", " + y + ")";
 							
 								});
+							
+
 						} else {
 
-							
+							obj.attr("width", 0);
 							
 						}
 						
@@ -877,6 +874,18 @@ USG.visualization = {};
 					    configurable: true, 
 					    writable: true
 					},
+					hideColumns: {
+						value: function ( metricName ) {
+							var thisObj = this;
+							thisObj.draw( thisObj.shiftColumns );
+							thisObj.draw( thisObj.shiftColumnLabels );
+							thisObj.shiftPasswordLabels();
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
 					drawLabels:{
 						value: function ( ) {
 							var thisObj = this;
@@ -896,17 +905,18 @@ USG.visualization = {};
 							var gridsvg = thisObj.svg.obj;
 							var columnssvg = thisObj.columnsSvg.obj ;
 
-
 							// Create password labels for main diagram
 							var passwordLabels = gridsvg.selectAll(".passwordLabels")
 								.data(dataset)
 								.enter().append("text")
 								.text(function (d) { return d['originalPassword']; })
 								.style("text-anchor", "end")
-								.attr("transform", function (d, i) { return "translate(" + (( -1 * thisObj.grid.size.width * ( (thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) +  thisObj.orderedMetrics.length - 1)/2)) - thisObj.labels.password.margin.left + thisObj.svg.dimensions.widthMidpoint) + "," +  ((i * thisObj.grid.size.height) + thisObj.grid.margin.top + (thisObj.grid.size.height * .8)) + ")";
+								.attr("transform", function (d, i) { 
+									return "translate(" + (( -1 * thisObj.grid.size.width * ( (thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) +  thisObj.orderedMetrics.length - 1)/2)) - thisObj.labels.password.margin.left + thisObj.svg.dimensions.widthMidpoint) + "," +  ((i * thisObj.grid.size.height) + thisObj.grid.margin.top + (thisObj.grid.size.height * .8)) + ")";
 								})
-								.attr("class", function (d, i) { return "password mono hiderow" })
+								.attr("class", function (d, i) { return "password mono hiderow passwordLabels" })
 								.attr("id", function (d, i) { return "labelpassword"+i; });
+
 
 							// Create password labels for main diagram
 							var passwordLabelsPermuted = gridsvg.selectAll(".passwordLabelsPermuted")
@@ -916,10 +926,11 @@ USG.visualization = {};
 								.style("text-anchor", "start")
 								.attr("transform", function (d, i) { return "translate(" + (( thisObj.grid.size.width * ( (thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) +  thisObj.orderedMetrics.length - 1)/2)) + thisObj.labels.password.margin.left + thisObj.svg.dimensions.widthMidpoint) + "," +  ((i * thisObj.grid.size.height) + thisObj.grid.margin.top + (thisObj.grid.size.height * .8)) + ")";
 								})
-								.attr("class", function (d, i) { return "password mono hiderow" })
+								.attr("class", function (d, i) { return "password mono hiderow passwordLabelsPermuted" })
 								.attr("id", function (d, i) { return "labelpassword"+i; });	
 
-
+							thisObj.shiftPasswordLabels();
+							
 							// Create labels for columns
 							var labels = columnssvg.selectAll(".metricLabel")
 								.data(thisObj.orderedMetrics)
@@ -933,8 +944,34 @@ USG.visualization = {};
 					    configurable: true, 
 					    writable: true
 					},
+					shiftPasswordLabels: {
+						value: function ( ) {
+							console.log("shift")
+							var thisObj = this;
+							var gridsvg = this.svg.obj;
+							// Create password labels for main diagram
+							var passwordLabels = gridsvg.selectAll(".passwordLabels")
+								.attr("transform", function (d, i) { 
+
+									console.log(thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ));
+
+									var x = (( -1 * thisObj.grid.size.width * ( (thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) +  thisObj.orderedMetrics.length - 1)/2)) - thisObj.labels.password.margin.left + thisObj.svg.dimensions.widthMidpoint);
+									return "translate(" + x + "," +  ((i * thisObj.grid.size.height) + thisObj.grid.margin.top + (thisObj.grid.size.height * .8)) + ")";
+								});
+
+
+							// Create password labels for main diagram
+							var passwordLabelsPermuted = gridsvg.selectAll(".passwordLabelsPermuted")
+								.attr("transform", function (d, i) { return "translate(" + (( thisObj.grid.size.width * ( (thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) +  thisObj.orderedMetrics.length - 1)/2)) + thisObj.labels.password.margin.left + thisObj.svg.dimensions.widthMidpoint) + "," +  ((i * thisObj.grid.size.height) + thisObj.grid.margin.top + (thisObj.grid.size.height * .8)) + ")";
+								});
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
 					drawColumnLabels: {
-						value: function ( thisObj, categoryIndex , metricIndex , metricName , currentMetricIndex ) {
+						value: function ( thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount , selector , x ) {
 							var columnssvg = thisObj.columnsSvg.obj ;
 						
 							var id = "." + thisObj.orderedMetrics[categoryIndex].name + categoryIndex + "";
@@ -946,12 +983,7 @@ USG.visualization = {};
 									return thisObj.metricSet.metrics[metricName].label;
 								})
 								.style("text-anchor", "start")
-								.attr("transform", function() {
-									
-									return "translate(" + ((( (currentMetricIndex + categoryIndex) - ((thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) + (thisObj.orderedMetrics.length - 1))/2)) * thisObj.grid.size.width) + ((thisObj.grid.size.width)/2) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + (thisObj.columnsSvg.dimensions.height - thisObj.labels.column.size.line - 5) + "), rotate(-70)";
-								
-								})
-								.attr("class", function(){return "label"+metricName+" columnLabel mono axis step "+metricName});
+								.attr("class", function(){return "label"+ metricName +" columnLabel mono axis step "+ metricName});
 
 
 							labels.append("line")
@@ -960,14 +992,50 @@ USG.visualization = {};
 								.attr("y1", 0)
 								.attr("y2", 0)
 								.attr("style", "stroke: #000")
-								.attr("stroke-opacity", 0.2)
-								.attr("transform", function(d, i) {
-									
-									return "translate(" + ((( (currentMetricIndex + categoryIndex) - ((thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) + (thisObj.orderedMetrics.length-1))/2)) * thisObj.grid.size.width) + (thisObj.grid.size.width/2) + thisObj.columnsSvg.dimensions.widthMidpoint) + ", " + thisObj.columnsSvg.dimensions.height + "), rotate(-90)";
-								
-								});
+								.attr("class", function(){return metricName + "Line" });
+
+
+							thisObj.shiftColumnLabels( thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount , selector , x );
 						
 						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					shiftColumnLabels: {
+						value: function ( thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount , selector , x ) {
+							var svg = thisObj.columnsSvg.obj,
+								nameClass = "." + metricName,
+								obj = svg.selectAll( nameClass ),
+								isVisible = thisObj.metricSet.isVisible( metricName , thisObj.dataKey , thisObj.parentKey ),
+								nameClassLine = "." + metricName + "Line"
+								lineObj = svg.selectAll(nameClassLine);
+
+							if( isVisible ){
+								obj
+									.attr("fill-opacity", 1)
+									.attr("transform", function(d, i) {
+
+										return "translate(" + (x + (thisObj.grid.size.width * .3)) + ", " + (thisObj.columnsSvg.dimensions.height - thisObj.labels.column.size.line - 5) + "), rotate(-70)";
+								
+									});
+
+								lineObj
+									.attr("stroke-opacity", 0.2)
+									.attr("transform", function(d, i) {
+										return "translate(" + (x + (thisObj.grid.size.width * .3)) + ", " + thisObj.columnsSvg.dimensions.height + "), rotate(-90)";
+								
+									});
+								
+
+							} else {
+
+								obj.attr("fill-opacity", 0);
+								lineObj.attr("stroke-opacity", 0);
+								
+							}
+						
+					},
 						enumerable: true,
 					    configurable: true, 
 					    writable: true
@@ -976,8 +1044,6 @@ USG.visualization = {};
 						value: function ( row ) {
 							thisObj = this; 
 
-							console.log( row );
-
 							var svg = thisObj.svg.obj;
 							var classname = "." + row;
 
@@ -985,15 +1051,11 @@ USG.visualization = {};
 
 							var yVal = thisObj.grid.size.height * row;
 
-							console.log(yVal);
-
 							if(yVal > this.svg.dimensions.heightMidpoint){
 								yVal -= this.svg.dimensions.heightMidpoint; 
 							} else {
 								yVal = 0;
 							}
-
-							console.log(yVal);
 							
 							this.svg.updateViewboxY( yVal );
 						
@@ -1014,7 +1076,7 @@ USG.visualization = {};
 
 					// Size and margin information for grid
 					this.grid = {
-						dimensions: {
+						size: {
 							width: 15,
 							height: 15
 						},
@@ -1047,11 +1109,11 @@ USG.visualization = {};
 							var thisObj = this;
 							var id = "#heatmap-tier3-svg-container",
 							width = $( id ).width(),
-							height = (thisObj.grid.dimensions.height * thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" )) + 50 ;
+							height = (thisObj.grid.size.height * thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" )) + 50 ;
 
 							this.svg = new Svg( height, width, id, this.html.parentContainer )
 
-							this.grid.margin.left = this.svg.dimensions.width - (this.grid.dimensions.width * 10) + 5;
+							this.grid.margin.left = this.svg.dimensions.width - (this.grid.size.width * 10) + 5;
 
 						},
 						enumerable: true,
@@ -1224,7 +1286,7 @@ USG.visualization = {};
 							svg.append("text")
 								.text("Original")
 								.attr("transform", function(){
-									return "translate(" + (x + (thisObj.grid.dimensions.width * .8)) + ", " + (thisObj.grid.margin.top - 5) + ")rotate(-70)";
+									return "translate(" + (x + (thisObj.grid.size.width * .8)) + ", " + (thisObj.grid.margin.top - 5) + ")rotate(-70)";
 								})
 								.attr("class", function(){
 									return "mono";
@@ -1233,7 +1295,7 @@ USG.visualization = {};
 							svg.append("text")
 								.text("Permuted")
 								.attr("transform", function(){
-									return "translate(" + (x + (thisObj.grid.dimensions.width * 4)) + ", " + (thisObj.grid.margin.top - 5) + ")rotate(-70)";
+									return "translate(" + (x + (thisObj.grid.size.width * 4)) + ", " + (thisObj.grid.margin.top - 5) + ")rotate(-70)";
 								})
 								.attr("class", function(){
 									return "mono";
@@ -1242,13 +1304,13 @@ USG.visualization = {};
 							svg.append("text")
 								.text("Change")
 								.attr("transform", function(){
-									return "translate(" + (x + (thisObj.grid.dimensions.width * 6)) + ", " + (thisObj.grid.margin.top - 5) + ")rotate(-70)";
+									return "translate(" + (x + (thisObj.grid.size.width * 6)) + ", " + (thisObj.grid.margin.top - 5) + ")rotate(-70)";
 								})
 								.attr("class", function(){
 									return "mono";
 								});
 
-							var draw = function (  thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount , categoryWithPermutedCount ) {
+							var draw = function (  thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount ) {
 
 								var svg = thisObj.svg.obj; 
 
@@ -1271,7 +1333,7 @@ USG.visualization = {};
 									.style("text-anchor", "end")
 									.attr("transform", function() {
 										
-										return "translate(" + (leftMargin - 20) + ", " + ((thisObj.grid.dimensions.height * (currentMetricIndex + categoryIndex))+ topMargin + (thisObj.grid.dimensions.height * .75)) + "), rotate(0)";
+										return "translate(" + (leftMargin - 20) + ", " + ((thisObj.grid.size.height * (currentMetricIndex + categoryIndex))+ topMargin + (thisObj.grid.size.height * .75)) + "), rotate(0)";
 									
 									})
 									.attr("class", function(d, i){return "breakdownlabel-"+name+" mono "+name});
@@ -1285,7 +1347,7 @@ USG.visualization = {};
 									.style("text-anchor", "middle")
 									.attr("transform", function() {
 										
-										return "translate(" + ((leftMargin - 1) ) + ", " + ((thisObj.grid.dimensions.height * (currentMetricIndex+ categoryIndex))+ topMargin + (thisObj.grid.dimensions.height * .75)) + "), rotate(0)";
+										return "translate(" + ((leftMargin - 1) ) + ", " + ((thisObj.grid.size.height * (currentMetricIndex+ categoryIndex))+ topMargin + (thisObj.grid.size.height * .75)) + "), rotate(0)";
 									
 									})
 									.attr("class", function(){return "breakdown-holder-"+name+" mono "+name});
@@ -1302,12 +1364,12 @@ USG.visualization = {};
 										.attr("transform", function(d , i) {
 											
 
-											var x = ((leftMargin - 1) + (thisObj.grid.dimensions.width * 4))
+											var x = ((leftMargin - 1) + (thisObj.grid.size.width * 4))
 											
-											var padding = (thisObj.grid.dimensions.height * .75);
-											var gridHeight = thisObj.grid.dimensions.height;
+											var padding = (thisObj.grid.size.height * .75);
+											var gridHeight = thisObj.grid.size.height;
 
-											var offsetIndex = (nonPermutedMetricCount - categoryWithPermutedCount) - ( ( currentMetricIndex - nonPermutedMetricCount ) + ( categoryIndex - categoryWithPermutedCount ) );
+											var offsetIndex = (nonPermutedMetricCount) - ( ( currentMetricIndex - nonPermutedMetricCount ) + ( categoryIndex) );
 											var offset = gridHeight * offsetIndex;
 																						
 											var y = (offset + topMargin + padding);
@@ -1348,7 +1410,7 @@ USG.visualization = {};
 
 							
 
-							var draw = function (  thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount , categoryWithPermutedCount ) {
+							var draw = function (  thisObj , categoryIndex , metricIndex , metricName, currentMetricIndex , nonPermutedMetricCount ) {
 
 										
 								var className = "." + thisObj.orderedMetrics[categoryIndex].name + categoryIndex + "-block";
@@ -1361,10 +1423,10 @@ USG.visualization = {};
 									block.append("rect").text(function(d,i){
 										return
 									})
-									.attr( "width", thisObj.grid.dimensions.width )
-									.attr( "height", thisObj.grid.dimensions.height )
+									.attr( "width", thisObj.grid.size.width )
+									.attr( "height", thisObj.grid.size.height )
 									.attr("transform", function(){
-										return "translate(" + ((leftMargin - 1) + thisObj.grid.dimensions.width) + ", " + ((thisObj.grid.dimensions.height * (currentMetricIndex+ categoryIndex))+ topMargin) + "), rotate(0)";
+										return "translate(" + ((leftMargin - 1) + thisObj.grid.size.width) + ", " + ((thisObj.grid.size.height * (currentMetricIndex+ categoryIndex))+ topMargin) + "), rotate(0)";
 									})
 									.attr("class", function(){return "block-"+ metricName + " " + metricName});
 									
@@ -1374,15 +1436,15 @@ USG.visualization = {};
 									block.append("rect").text(function(d,i){
 										return
 									})
-									.attr( "width", thisObj.grid.dimensions.width )
-									.attr( "height", thisObj.grid.dimensions.height )
+									.attr( "width", thisObj.grid.size.width )
+									.attr( "height", thisObj.grid.size.height )
 									.attr("transform", function(){
-											var x = ((leftMargin - 1) + (thisObj.grid.dimensions.width * 2))
+											var x = ((leftMargin - 1) + (thisObj.grid.size.width * 2))
 											
 											var padding = 0;
-											var gridHeight = thisObj.grid.dimensions.height;
+											var gridHeight = thisObj.grid.size.height;
 
-											var offsetIndex = (nonPermutedMetricCount - categoryWithPermutedCount) - ( ( currentMetricIndex - nonPermutedMetricCount ) + ( categoryIndex - categoryWithPermutedCount ) );
+											var offsetIndex = (nonPermutedMetricCount) - ( ( currentMetricIndex - nonPermutedMetricCount ) + ( categoryIndex) );
 											var offset = gridHeight * offsetIndex;
 																						
 											var y = (offset + topMargin + padding);
@@ -1419,7 +1481,7 @@ USG.visualization = {};
 					    writable: true
 					},
 					populateValues: {
-						value: function ( thisObj , categoryIndex , metricIndex , metricName , currentMetricIndex ,  nonPermutedMetricCount , categoryWithPermutedCount , selector ) {
+						value: function ( thisObj , categoryIndex , metricIndex , metricName , currentMetricIndex ,  nonPermutedMetricCount  , selector ) {
 							
 							var svg = thisObj.svg.obj;
 							var dataset = thisObj.dataset.getData();
@@ -1437,7 +1499,7 @@ USG.visualization = {};
 					    writable: true
 					},
 					colorBlocks: {
-						value: function ( thisObj , categoryIndex , metricIndex , metricName , currentMetricIndex ,  nonPermutedMetricCount , categoryWithPermutedCount , selector ) {
+						value: function ( thisObj , categoryIndex , metricIndex , metricName , currentMetricIndex ,  nonPermutedMetricCount , selector ) {
 							
 							var svg = thisObj.svg.obj;
 							var dataset = thisObj.dataset.getData();
@@ -1503,12 +1565,21 @@ USG.visualization = {};
 					},
 					triggerHideColumns: {
 						value: function ( metricName ) {
-							console.log(metricName);
 
-							var thisObj = this;
+							var thisObj = this,
+							visible;
 
-							thisObj.metricSet.setVisibility( metricName , this.dataKey , this.parentKey  , false );
-							thisObj.metricSet.changeCount( this.dataKey , this.parentKey , "visible" , false );
+							if( this.metricSet.isVisible (metricName ,  this.dataKey , this.parentKey ) ){
+
+								visible = false;
+
+							} else {
+
+								visible = true;
+
+							}
+
+							thisObj.metricSet.setVisibility( metricName , this.dataKey , this.parentKey  , visible );
 
 							thisObj.hideColumns( metricName );
 
@@ -1681,13 +1752,10 @@ USG.visualization = {};
 						var increment = -1;
 					}
 
-					console.log(this.count);
-
 					if( this.count[ key ][ visualizationKey ] ) {
 						if( type == "visible" ){
 
 							this.count[ key ][ visualizationKey ].visible += increment;
-							console.log("Count changed to " + this.count[ key ][ visualizationKey ].visible);
 
 						} else {
 	
@@ -1700,100 +1768,6 @@ USG.visualization = {};
 
 					
 				},
-				// Return ordered array of metrics organized by largest to smallest category
-				// Non permuted metric will be at the center of the array
-				// Items with a metric counterpart 
-				// 	@param: String[] containing category names 
-				// orderMetrics: function ( ) {
-					
-				// 	var categoryArray = []; // Used for sorting categories by size
-				// 	var categoriesToBeAdded = []; // Holds categories that don't have permuted pairs
-				// 	this.orderedMetrics = []; // Ordered metric array
-					
-				// 	// Add categories to an array to be sorted
-				// 	for(var prop in this.categories){
-				// 		categoryArray.push( [ prop , this.categories[ prop ] ] );
-				// 	}
-
-				// 	// Sort categories from smallest to largest
-				// 	categoryArray.sort(function(a, b){
-
-				// 		var a = a[1];
-				// 		var b = b[1];
-				// 		return a.metricOrder.length - b.metricOrder.length;
-
-				// 	});
-
-				// 	// Start with the largest category and add to the array
-				// 	// Add metrics with permuted pairs first
-				// 	// Original metrics
-				// 	for( var i = categoryArray.length - 1; i > 0 ; i-- ) {
-				// 		// Add original 
-				// 		if( categoryArray[i][1].isPermuted ){
-
-				// 			var obj = categoryArray[i][1];
-
-				// 			for(var j = 0; j < obj.metricsOriginal.length; j++){
-
-				// 				this.orderedMetrics.push( obj.metricsOriginal[ j ] );
-
-				// 			}
-
-
-				// 		} else {
-
-				// 			categoriesToBeAdded.push( categoryArray[i] );
-
-				// 		}
-				
-				// 	}
-
-				// 	// Add metrics without permuted pairs
-				// 	for( var i = 0; i < categoriesToBeAdded.length; i++ ) {
-				// 		if(!categoriesToBeAdded[i][1].allString){
-				// 			// Add metrics
-				// 			var obj = categoriesToBeAdded[i][1];
-
-				// 			for(var j = 0; j < obj.metricOrder.length; j++){
-				// 				if(obj.metrics[ obj.metricOrder[ j ] ].dataType != "String"){
-									
-				// 					this.orderedMetrics.push( obj.metricOrder[ j ] );
-
-				// 				}
-				// 			} 
-				// 		}
-							
-
-						
-				// 	}
-
-				// 	// Add metrics with permuted pairs again
-				// 	// Permuted metrics
-				// 	for( var i = 0; i < categoryArray.length ; i++ ) {
-						
-				// 		// Add permuted 
-				// 		if( categoryArray[i][1].isPermuted ){
-				// 			var obj = categoryArray[i][1];
-
-				// 			for(var j = obj.metricsPermuted.length-1; j > -1 ; j--){
-
-				// 				this.orderedMetrics.push( obj.metricsPermuted[ j ] );
-
-				// 			}
-				// 		}
-
-						
-				// 	}
-
-				// 	return this.orderedMetrics;
-				// },
-				// getOrderedMetrics: function ( ) {
-				// 	if( !this.orderedMetrics ) {
-				// 		return this.orderMetrics();
-				// 	} else {
-				// 		return this.orderedMetrics;
-				// 	}
-				// },
 				orderCategories: function ( key , visualizationKey ) {
 					
 					var categoryArray = []; // Used for sorting categories by size
@@ -1955,37 +1929,6 @@ USG.visualization = {};
 					}
 
 				},
-				// getMetricCount: function ( type ) {
-
-
-				// 	if ( type ) {
-
-				// 		var list = []; // List of grid objects 
-
-				// 		if ( type === "grid" ) {
-
-				// 			for ( var prop in this.metrics ) {
-
-				// 				if ( this.metrics[prop].visualizationType.grid ) {
-
-				// 					list.push(this.metrics[prop].label);
-
-				// 				}
-
-				// 			}
-
-				// 			return list.length;
-
-				// 		}
-
-
-				// 	} else {
-
-				// 		return this.metricList.length;
-
-				// 	}
-					
-				// },
 				getNormalColorScale: function ( metricName , dataKey , visualizationKey ) {
 
 					return this.metrics[ metricName ].getNormalColorScale( dataKey , visualizationKey );
@@ -1999,6 +1942,7 @@ USG.visualization = {};
 				setVisibility: function ( metricName , dataKey , visualizationKey , visible ) {
 
 					this.metrics[ metricName ].setVisibility( dataKey , visualizationKey , visible );
+					this.changeCount( dataKey , visualizationKey , "visible" , visible );
 
 				},
 				isVisible: function ( metricName , dataKey , visualizationKey ) {
