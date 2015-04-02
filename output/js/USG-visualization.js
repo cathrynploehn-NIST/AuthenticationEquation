@@ -208,9 +208,9 @@ USG.visualization = {};
 					// Append a container and contents for the heatmap
 					$( "#vizualizations-holder" ).append( html );
 
-					// Opt in bootstrap popovers ( hint callouts )
+					// Opt in bootstrap tooltips ( hint callouts )
 					$(function () {
-					  $('[data-toggle="popover"]').popover( { trigger: 'hover' })
+					  $('[data-toggle="tooltip"]').tooltip();
 					})
 				};
 
@@ -707,31 +707,6 @@ USG.visualization = {};
 							var rowClass = "." + metricName + row;
 							var position = $(rowClass).position();
 
-							// svg.selectAll(".rowSelector")
-							// 	.attr("transform", function(d, i) {
-							// 		var y = position.top;
-
-							// 		var gutter = thisObj.totalGutterCount;
-							// 		var offsetIndex =  (thisObj.metricSet.getCount( thisObj.dataKey , thisObj.parentKey , "visible" ) + gutter)/2;
-											
-							// 		var offset = (-1 * thisObj.grid.size.width * offsetIndex);
-
-							// 		var x = offset + thisObj.svg.dimensions.widthMidpoint ;
-									
-							// 		return "translate(" + x + ", " + ((thisObj.grid.size.height/2) + y) + ")";
-							
-							// 	});
-
-							// position = $(columnClass).position();
-
-							// svg.selectAll(".columnSelector")
-							// 	.attr("transform", function(d, i) {
-									
-							// 		var x = position.left - (thisObj.grid.size.width/4);
-									
-							// 		return "translate(" + x + ", " + (thisObj.margin.top/2) + ")";
-							
-							// 	});
 								
 				    	} else {
 
@@ -1323,7 +1298,7 @@ USG.visualization = {};
 						margin: {
 							top: 80,
 							right: 0,
-							left: 0
+							left: 10
 						}
 					};
 
@@ -1530,7 +1505,7 @@ USG.visualization = {};
 							svg.append("text")
 								.text("Original")
 								.attr("transform", function(){
-									return "translate(" + (x + (thisObj.grid.size.width * .8)) + ", " + (thisObj.grid.margin.top - 5) + ")rotate(-70)";
+									return "translate(" + (x + (thisObj.grid.size.width * .5)) + ", " + (thisObj.grid.margin.top - 25) + ")rotate(-70)";
 								})
 								.attr("class", function(){
 									return "mono";
@@ -1539,10 +1514,31 @@ USG.visualization = {};
 							svg.append("text")
 								.text("Permuted")
 								.attr("transform", function(){
-									return "translate(" + (x + (thisObj.grid.size.width * 4)) + ", " + (thisObj.grid.margin.top - 5) + ")rotate(-70)";
+									return "translate(" + (x + (thisObj.grid.size.width * 4)) + ", " + (thisObj.grid.margin.top - 25) + ")rotate(-70)";
 								})
 								.attr("class", function(){
 									return "mono";
+								});
+
+							svg.append("text")
+								.text("Permuted")
+								.attr("font-weight", "bolder")
+								.attr("transform", function(){
+									return "translate(" + (x + (thisObj.grid.size.width * 3) - (thisObj.grid.size.width/2)) + ", " + (thisObj.grid.margin.top - 7) + ")";
+								})
+								.attr("class", function(){
+									return "mono permuted";
+								});
+
+							svg.append("text")
+								.style("text-anchor", "end")
+								.text("Original")
+								.attr("font-weight", "bolder")
+								.attr("transform", function(){
+									return "translate(" + (x + (thisObj.grid.size.width * 1.8) - (thisObj.grid.size.width/2)) + ", " + (thisObj.grid.margin.top - 7) + ")";
+								})
+								.attr("class", function(){
+									return "mono original";
 								});
 
 							// svg.append("text")
@@ -1580,7 +1576,7 @@ USG.visualization = {};
 										return "translate(" + (leftMargin - 20) + ", " + ((thisObj.grid.size.height * (currentMetricIndex + categoryIndex))+ topMargin + (thisObj.grid.size.height * .75)) + "), rotate(0)";
 									
 									})
-									.attr("class", function(d, i){return "breakdownlabel-"+name+" mono "+name});
+									.attr("class", function(d, i){return "breakdownlabel-"+ name +" mono  "+ name + " new"+name + " breakdownlabel-new"+ name });
 
 									label.append("text")
 									.text(function() { 
@@ -1672,7 +1668,7 @@ USG.visualization = {};
 									.attr("transform", function(){
 										return "translate(" + ((leftMargin - 1) + thisObj.grid.size.width) + ", " + ((thisObj.grid.size.height * (currentMetricIndex+ categoryIndex))+ topMargin) + "), rotate(0)";
 									})
-									.attr("class", function(){return "block-"+ metricName + " " + metricName});
+									.attr("class", function(){return "block-"+ metricName});
 									
 								// Draw permuted block
 								} else {
@@ -1697,7 +1693,7 @@ USG.visualization = {};
 
 											return "translate(" + x + ", " + y + "), rotate(0)";
 									})
-									.attr("class", function(){return "block-"+metricName+" "+metricName});
+									.attr("class", function(){return "block-"+metricName});
 
 								}
 
@@ -1714,10 +1710,12 @@ USG.visualization = {};
 					},
 					hover: {
 						value: function ( metricName , type , selector , row ) {
-
+							console.log(row)
 							if( row ){
 								this.draw( this.populateValues , row );
 								this.draw( this.colorBlocks , row );
+
+								this.boldLabels( metricName , type );
 							}
 							
 
@@ -1739,6 +1737,58 @@ USG.visualization = {};
 					    	
 							rowObj.text( function( ){ return Math.floor(data[ metricName ]); });
 
+							var password = svg.selectAll(".original");
+							password.text( function( ){ return data[ "originalPassword" ]; } );
+
+							password = svg.selectAll(".permuted");
+							password.text( function( ){ return data[ "permutedPassword" ]; } );
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					boldLabels: {
+						value: function ( metricName , type ) {
+							var thisObj = this;
+							var svg = this.svg.obj;
+							var columnClass = "." + metricName ;
+							var svgObj = svg.selectAll(columnClass);
+							console.log(svgObj)
+							console.log(type)
+
+							var allObj = svg.selectAll("text");
+							
+							var labelClass = ".breakdownlabel-" + metricName;
+							var labelObj = svg.selectAll(labelClass);
+							console.log(labelObj)
+
+							if( type == "mouseover" ) {
+
+								svgObj.attr("font-weight" , "900").style("fill", "#F00");
+								var text = labelObj.text();
+								labelObj.text(" ");
+
+								labelObj.text(function(){
+									return " ☞ " + text;
+								});
+
+							} else {
+								svgObj.attr("font-weight" , "lighter").style("fill", "#000");;
+								
+								var text = labelObj.text();
+								
+								text = text.substring(3, text.length);
+								labelObj.text(" ");
+
+								labelObj.text(function(){
+									return text;
+								});
+
+							}
+
+
+
 						},
 						enumerable: true,
 					    configurable: true, 
@@ -1758,6 +1808,10 @@ USG.visualization = {};
 					    	var colorScale = thisObj.metricSet.getNormalColorScale( metricName , thisObj.dataKey , thisObj.parentKey );
 
 							rowObj.style( "fill", function( d , i ){ return colorScale( data[ metricName ]) });
+
+							rowClass = "." + metricName ;
+							rowObj = svg.selectAll(rowClass);
+							rowObj.attr()
 
 						},
 						enumerable: true,
