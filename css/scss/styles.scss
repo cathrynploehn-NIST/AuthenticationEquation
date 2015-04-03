@@ -1,8 +1,18 @@
 @import 'bourbon';
 @import 'bootstrap_changes';
 
+
 #USG-body, #vizualizations-holder, #vizualizations-holder-container,  html, .heatmap, .full-height {
 	height: 100%;
+}
+
+#navbar-main {
+    background-color: white;
+
+    .navbar-brand {
+        color: black; 
+    }
+
 }
 
 .btn-file {
@@ -25,7 +35,7 @@
     display: block;
 }
 
-.USG-upload {
+.USG-alert {
     text-align: center;
 }
 
