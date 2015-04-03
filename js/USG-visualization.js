@@ -10,7 +10,7 @@ console.log(USG);
 
 (function(){
 
-	// Metric and visualizaton components
+	// Metric and visualization components
 	var constants = (function(){
 			var metric = (function() {
 					
@@ -302,6 +302,9 @@ console.log(USG);
 		
 		var currentEnvironment;
 
+		// Flag determining whether example data is shown
+		var showExample = false;
+
 		// environment
 		var environment = ( function(){
 
@@ -320,7 +323,10 @@ console.log(USG);
 
 			};
 			EnvironmentInstance.prototype = {
-				
+				alertMessage: function ( msg ) {
+					$("#USG-information").prepend('<div class="alert alert-warning" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span> ' + msg + '</div>');
+				},
+
 				// Adds a HeatmapSet visualization to the environment
 				// @Param: dataLocation: String. Key representing where the dataFile is located ( no .csv )
 				// @Param: config: String. What type of configuration should the heatmap use. Accepted type(s): "default"
@@ -357,14 +363,14 @@ console.log(USG);
 						// For each property in a row ( d ) 
 			        	for ( var prop in d ) {
 
-			        			// Add metric to the metric set
-			            		thisObj.metricSet.addMetric( prop );
+		        			// Add metric to the metric set
+		            		thisObj.metricSet.addMetric( prop );
 
-			            		// if datatype is not a string
-			            		// All unidentified metrics will be assumed to be Strings
-			            		if( !thisObj.metricSet.isString( prop ) ) {
-			            			d[prop] = +d[ prop ];
-			            		}
+		            		// if datatype is not a string
+		            		// All unidentified metrics will be assumed to be Strings
+		            		if( !thisObj.metricSet.isString( prop ) ) {
+		            			d[prop] = +d[ prop ];
+		            		}
 
 			            }
 
@@ -385,6 +391,7 @@ console.log(USG);
 						
 						if ( error ){
 							console.log( error.stack );
+							this.alertMessage( "Error loading data." );
 						}
 
 						// Add dataset
@@ -393,11 +400,67 @@ console.log(USG);
 						// Initialize metric domains
 						thisObj.metricSet.setDomains( thisObj.datasets[ dataLocation ], dataLocation );
 						
-						callback();
+						if( callback ) {
+
+							callback( dataLocation );
+
+						}
+						
 
 					});
 		
+				}, 
+
+				parseData: function( name, file , callback ){
+					var thisObj = this;
+					if(!thisObj.datasets[ name ]){
+						
+						// Load data using d3.js
+						data = d3.csv.parse( file );
+						console.log(data);
+
+						// For each property in a row ( data ) 
+			        	for( var i = 0; i < data.length ; i++ ){
+				        	for ( var prop in data[i] ) {
+
+			        			// Add metric to the metric set
+			            		thisObj.metricSet.addMetric( prop );
+
+			            		// if datatype is not a string
+			            		// All unidentified metrics will be assumed to be Strings
+			            		if( !thisObj.metricSet.isString( prop ) ) {
+			            			data[i][prop] = +(data[i][ prop ]);
+			            		}
+
+				            }
+			        	}
+			        	
+						console.log( "Metrics created:");
+						console.log( thisObj.metricSet );
+						var dataset = data;
+						console.log( "Data Loaded:");
+						console.log( data );
+						
+						// Add dataset
+						thisObj.datasets[ name ] = thisObj.createData.create( data );
+
+						// Initialize metric domains
+						thisObj.metricSet.setDomains( thisObj.datasets[ name ], name );
+						
+						if( callback ) {
+
+							callback( name );
+
+						}
+
+					} else {
+						console.log("Dataset by that name already exists");
+
+						this.alertMessage( "Dataset by that name already exists" );
+					}
+						
 				}
+
 			};
 
 			/* Public Methods */
@@ -405,6 +468,10 @@ console.log(USG);
 			// Create and return environmentInstance
 			var create = function( callback ){
 				return new EnvironmentInstance( callback );
+			};
+
+			var clear = function() {
+				$("#vizualizations-holder").html('');
 			};
 
 			var dataset = ( function(){
@@ -2871,26 +2938,44 @@ console.log(USG);
 				// Create environment
 				create: create,
 
+				// Clear environment contents
+				clear: clear,
+
 				// Components of an environment
 				metric: metric
+
+
 			};
 		
 		})();
 		
 		var loadData = function ( location ) {
 
-				currentEnvironment.loadData( location , addHeatmap );
+			currentEnvironment.loadData( location , addHeatmap );
 			
 		}
+
+		var parseData = function ( name , location ) {
+			
+			if(showExample){
+				environment.clear();
+			}
+			
+			var rReplace = /\.csv/g;
+			name = name.replace(rReplace, "");
+			
+			currentEnvironment.parseData( name , location , addHeatmap );
+
+		}
 		
+		var addHeatmap = function( location ){
+
+			currentEnvironment.addHeatmapSet( location , "default" );
+		
+		};
+
 		// Create environment and load example heatmap
 		var initialize = function(){
-			
-			var addHeatmap = function(){
-
-				currentEnvironment.addHeatmapSet( "example" , "default" );
-			
-			};
 
 			var loadDefaultData = function ( ) {
 
@@ -2904,7 +2989,8 @@ console.log(USG);
 
 		return {
 			initialize: initialize,
-			loadData: loadData
+			loadData: loadData,
+			parseData: parseData
 		}
 
 	})( );
@@ -2920,12 +3006,14 @@ console.log(USG);
 		var showUpload = function ( ) {
 
 			$("#USG-information").load(EXTERNAL_HTML.upload, function done () {
+
 				$('.csvData-btn :file').on('fileselect', function(event, numFiles, label) {
 
 			        $('.csvData-label').html(label);
 			        $("#USG-upload-submit").removeAttr("disabled")
 
 			    });
+
 			});
 		};
 		
@@ -2954,12 +3042,37 @@ console.log(USG);
 
 	})( );
 
-	this.upload = function () {
+	this.upload = function ( event ) {
+		event.preventDefault(); // Prevent page from reloading
 
-		var data = $("#USG-upload-form").serialize();
-		console.log(data);
-		$("#USG-information").text(data);
+		var thisObj = this;
+
+		var form = document.getElementById('USG-csv-file-select'),
+			file = form.files[0],
+			name = file.name,
+			URL = "",
+			reader  = new FileReader();
+			
+			console.log(thisObj.visualization);
+
+		// var objectURL = window.URL.createObjectURL(file);
+		// console.log(objectURL);
+		// thisObj.visualization.loadData( objectURL );
+
+		reader.onloadend = function (event) {
+			data = event.target.result;
+			console.log(URL);
+
+			thisObj.visualization.parseData( name , data );
+
+		}
+
+		if (file) {
+			reader.readAsText(file);
+		}
+
 		return false;
+
 	}
 
 	this.init = function () {
