@@ -6,11 +6,17 @@
 	height: 100%;
 }
 
-#navbar-main {
+#navbar-main, .navbar-visualization {
+
     background-color: white;
 
     .navbar-brand {
         color: black; 
+    }
+
+    form.navbar {
+        display: inline-block;
+        margin: 0px;
     }
 
 }
@@ -34,7 +40,17 @@
     cursor: inherit;
     display: block;
 }
+#vizualizations-holder {
+    
+    #heatmap-overview-container {
 
+        div.tier {
+            float:right;
+        }
+
+    }
+
+}
 .USG-alert {
     text-align: center;
 }
@@ -54,3 +70,5 @@ text.mono {
 	font-family: Consolas, courier;
 	fill: #000;
 }
+
+
