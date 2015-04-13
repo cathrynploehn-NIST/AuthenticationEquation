@@ -662,11 +662,13 @@ console.log(USG);
 				};
 				HeatmapSet.prototype = {
 					addData: function ( dataLocation , visualizationKey , dataset ) {
-						
+						var thisObj = this;
+
 						thisObj.setMetricColorScheme( "overview" );
 						
+						var index = thisObj.datasets.length;
 						thisObj.datasets.push( dataset );
-						var index = datasets.length - 1;
+						
 
 						// Create new tier1, tier3
 						var defTiersCreated = $.Deferred();
@@ -680,6 +682,7 @@ console.log(USG);
 
 							$.when( tiers[index].loadHTML() ).done(function () {
 								thisObj.appendTierHTML( tiers[index] );
+								console.log("init tier");
 								tiers[index].initialize();
 							}); 
 
@@ -712,7 +715,7 @@ console.log(USG);
 
 						for (var i = 0; i < whichTiers.length; i++) {
 							var index = thisObj.tiers.length; // Represents the unique identifier of the new tier
-
+							console.log(thisObj.key);
 							// Ensure the type is accounted for
 							if( whichTiers[i] == 1 || whichTiers[i] == 2 || whichTiers[i] == 3){
 								// Will append html to the heatmap container
@@ -727,16 +730,19 @@ console.log(USG);
 					createTier: function ( whichTier , dataset , mode ) {
 						var thisObj = this,
 						index = thisObj.tiers.length; // Represents the unique identifier of the new tier
+						console.log("Tier index: "+index)
 
 						// Ensure the type is accounted for
 						if( whichTier == 1 || whichTier == 2 || whichTier == 3){
 							// Will append html to the heatmap container
 							// type , dataKey , key , datasets , visualizationKey , metricSet , parentKey
 							thisObj.tiers.push ( tier.create( whichTier , thisObj.dataKey , index , dataset , thisObj.visualizationKey , thisObj.metricSet , thisObj.key , mode ) );
+
 						}
 							
 					},
 					initializeTiers: function() {
+						
 						var thisObj = this;
 
 						if ( thisObj.tiers ) {
@@ -748,9 +754,10 @@ console.log(USG);
 						}
 					},
 					appendTierHTML: function ( tier ) {
-
+						
+						console.log("appendTierHTML");
 						var tierHTML = tier.getHTML(),
-						classname = "#" + thisObj.container + " #" + thisObj.key;
+						classname = "#heatmap-overview";
 
 						$( classname ).append( tierHTML );
 
@@ -825,6 +832,7 @@ console.log(USG);
 					var TierInstance = function( type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode ){
 						var thisObj = this;
 						this.key = key;
+
 						this.parentKey = parentKey;
 						
 						this.dataKey = dataKey;
@@ -862,8 +870,10 @@ console.log(USG);
 							top: 0
 						};
 
-						this.type = type;
-
+						this.type = type;	
+						
+						console.log("Tier " + this.type + " " + this.visualizationKey + ": \n index: " + key);
+						
 						this.connectedTiers = [];
 
 						this.hiddenRows = {};
@@ -890,11 +900,14 @@ console.log(USG);
 								var rId = new RegExp( rId , "g" );
 
 								// Add specialized id for this tier
-								var rReplace = "id=\"tier" + thisObj.type + "-" + ( thisObj.html.parentContainer ) + "\""; 
+								var rReplace = "id=\"tier" + thisObj.type + "-" + ( thisObj.html.parentContainer ) + "-" + thisObj.key + "\""; 
 								data = data.replace( rId , rReplace );
 								
 								thisObj.html.markup = data;
-								thisObj.html.id = "tier" + thisObj.type + "-" + thisObj.html.parentContainer;
+								thisObj.html.id = "tier" + thisObj.type + "-" + thisObj.html.parentContainer + "-" + thisObj.key;
+
+								console.log("Tier " + thisObj.type + " " + thisObj.visualizationKey + ": \n index: " + thisObj.key);
+
 								deferred.resolve(); 
 
 							});
@@ -2426,7 +2439,6 @@ console.log(USG);
 						},
 						sortPasswords: {
 							value: function ( metricName ) {
-								console.log(this.dataset);
 
 								if(this.mode == "overview"){
 									console.log("Overview sort by " + metricName);
