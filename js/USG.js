@@ -632,7 +632,7 @@ console.log(USG);
 
 							console.log("Create heatmap with default config");
 
-							// Create new tier1, tier2, tier3
+							// Create new tier1, tier3
 							var defTiersCreated = $.Deferred();
 							thisObj.createTier(3 , thisObj.datasets , "overview");
 							thisObj.createTier(1 , thisObj.datasets[0] , "overview");
@@ -661,8 +661,30 @@ console.log(USG);
 					
 				};
 				HeatmapSet.prototype = {
-					addData: function ( dataLocation , visualizationKey , datasets ) {
+					addData: function ( dataLocation , visualizationKey , dataset ) {
 						
+						thisObj.setMetricColorScheme( "overview" );
+						
+						thisObj.datasets.push( dataset );
+						var index = datasets.length - 1;
+
+						// Create new tier1, tier3
+						var defTiersCreated = $.Deferred();
+						thisObj.createTier(1 , dataset , "overview");
+						thisObj.connectTiers([0,index]);
+						thisObj.connectTiers([index,0]);
+						defTiersCreated.resolve(thisObj.tiers);
+
+						// Load html for tiers
+						defTiersCreated.done(function(tiers){
+
+							$.when( tiers[index].loadHTML() ).done(function () {
+								thisObj.appendTierHTML( tiers[index] );
+								tiers[index].initialize();
+							}); 
+
+						});
+
 					},
 					hide: function ( ) {
 
@@ -724,6 +746,14 @@ console.log(USG);
 							};
 
 						}
+					},
+					appendTierHTML: function ( tier ) {
+
+						var tierHTML = tier.getHTML(),
+						classname = "#" + thisObj.container + " #" + thisObj.key;
+
+						$( classname ).append( tierHTML );
+
 					},
 					addTierHTML: function( tiers ) {
 						var thisObj = this,
@@ -1863,19 +1893,24 @@ console.log(USG);
 								var parent = "#" + thisObj.parentKey;
 								
 								// About this dataset panel
-								$( parent + ' .heatmap-tier3-filedata' ).append('<div class="panel-group heatmap-tier3-filedata" id="accordion"><div class="panel panel-default"><div class="panel-heading"><h4 class="panel-title"><a data-toggle="collapse" data-parent="" href="#about-dataset-' + thisObj.parentKey + '">About this dataset</a></h4></div><div id="about-dataset-' + thisObj.parentKey + '" class="panel-collapse collapse in"><div class="panel-body"><table class="table table-hover about-dataset-holder"></table></div></div></div></div>');
+								$( parent + ' .heatmap-tier3-filedata' ).append('<div class="panel-group heatmap-tier3-filedata" id="accordion"><div class="panel panel-default"><div class="panel-heading"><h4 class="panel-title"><a data-toggle="collapse" data-parent="" class="about-dataset-' + thisObj.parentKey + '" href="#about-dataset-' + thisObj.parentKey + '"></a></h4></div><div id="about-dataset-' + thisObj.parentKey + '" class="panel-collapse collapse in"><div class="panel-body"><table class="table table-hover about-dataset-holder"></table></div></div></div></div>');
 
-
+								var classname = '.about-dataset-' + thisObj.parentKey;
+								
 								if( thisObj.mode !== "overview" ) {
 									var dataset = thisObj.dataset.getData();
 									
+									$( classname ).html('About this dataset');
+
 									// File displayed 
-									$( parent + ' .about-dataset-holder').append('<tr><th>File displayed:<td id="fileDisplayed"></td></tr>');
-									$( parent + ' #fileDisplayed').html(thisObj.dataKey);
+									$( parent + ' .about-dataset-holder').append('<tr><th>File displayed:<td id="fileDisplayed">' + thisObj.dataKey + '</td></tr>');
 
 									// Number of passwords
-									$( parent + ' .about-dataset-holder').append('<tr><th>Number of passwords:<td id="numPasswords"></td></tr>');
-									$( parent + ' #numPasswords').html(dataset.length);
+									$( parent + ' .about-dataset-holder').append('<tr><th>Number of passwords:<td id="numPasswords">' + dataset.length + '</td></tr>');
+
+								} else {
+
+									$( classname ).html('About dataset(s)');
 
 								}
 								
