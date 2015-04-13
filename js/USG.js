@@ -334,6 +334,7 @@ console.log(USG);
 					
 					// If the dataset exists, visualize
 					if( this.datasets[ dataLocation ] ){
+						gui.showVisualization( "heatmap-overview" );
 
 						// Create visualization key
 						var visualizationKey = "heatmap-" + dataLocation;
@@ -341,7 +342,10 @@ console.log(USG);
 						// Create heatmap in visualizations[] with "heatmap-[dataLocation] as a key"
 						// Parameters: dataLocation: where data is located, visualizationKey: unique identifier for this visualization , dataset: dataset object corresponding with the dataLocation identifier, config: type of configuration the heatmap is using, metricSet: metricSet object 
 						this.visualizations[visualizationKey] = heatmap.create( dataLocation , visualizationKey , [this.datasets[ dataLocation ]] , config , this.metricSet );
-
+						
+						gui.addVisualization( visualizationKey );
+						gui.showVisualization( visualizationKey );
+						
 						// Add data to the heatmap overview
 						if( !this.visualizations[ "heatmap-overview" ] ){
 							
@@ -350,12 +354,15 @@ console.log(USG);
 
 						} else {
 
+							gui.showVisualization( "heatmap-overview" );
 							this.visualizations[ "heatmap-overview" ].addData( dataLocation , visualizationKey , this.datasets[ dataLocation ] );
-
+						
 						}
 
-						gui.addVisualization( visualizationKey );
 						gui.showVisualization( visualizationKey );
+						
+						// $(classnameShow).hide();
+
 
 					} else {
 
@@ -397,11 +404,11 @@ console.log(USG);
 						dataLocation = dataLocation.replace(rReplace, "");
 
 						if ( data ) {
-							console.log( "Metrics created:");
-							console.log( thisObj.metricSet );
+							// console.log( "Metrics created:");
+							// console.log( thisObj.metricSet );
 							dataset = data;
-							console.log( "Data Loaded:");
-							console.log( data );
+							// console.log( "Data Loaded:");
+							// console.log( data );
 						}
 						
 						if ( error ){
@@ -432,7 +439,7 @@ console.log(USG);
 						
 						// Load data using d3.js
 						data = d3.csv.parse( file );
-						console.log(data);
+						// console.log(data);
 
 						// For each property in a row ( data ) 
 			        	for( var i = 0; i < data.length ; i++ ){
@@ -450,11 +457,11 @@ console.log(USG);
 				            }
 			        	}
 			        	
-						console.log( "Metrics created:");
-						console.log( thisObj.metricSet );
 						var dataset = data;
-						console.log( "Data Loaded:");
-						console.log( data );
+						// console.log( "Metrics created:");
+						// console.log( thisObj.metricSet );
+						// console.log( "Data Loaded:");
+						// console.log( data );
 						
 						// Add dataset
 						thisObj.datasets[ name ] = thisObj.createData.create( data , name );
@@ -666,11 +673,9 @@ console.log(USG);
 
 						thisObj.setMetricColorScheme( "overview" );
 						
-						var index = thisObj.datasets.length;
 						thisObj.datasets.push( dataset );
+						var index = thisObj.datasets.length;
 						
-
-						// Create new tier1, tier3
 						var defTiersCreated = $.Deferred();
 						thisObj.createTier(1 , dataset , "overview");
 						thisObj.connectTiers([0,index]);
@@ -682,7 +687,7 @@ console.log(USG);
 
 							$.when( tiers[index].loadHTML() ).done(function () {
 								thisObj.appendTierHTML( tiers[index] );
-								console.log("init tier");
+								console.log($("#tier1-heatmap-overview-2").width());
 								tiers[index].initialize();
 							}); 
 
@@ -715,7 +720,7 @@ console.log(USG);
 
 						for (var i = 0; i < whichTiers.length; i++) {
 							var index = thisObj.tiers.length; // Represents the unique identifier of the new tier
-							console.log(thisObj.key);
+
 							// Ensure the type is accounted for
 							if( whichTiers[i] == 1 || whichTiers[i] == 2 || whichTiers[i] == 3){
 								// Will append html to the heatmap container
@@ -730,7 +735,6 @@ console.log(USG);
 					createTier: function ( whichTier , dataset , mode ) {
 						var thisObj = this,
 						index = thisObj.tiers.length; // Represents the unique identifier of the new tier
-						console.log("Tier index: "+index)
 
 						// Ensure the type is accounted for
 						if( whichTier == 1 || whichTier == 2 || whichTier == 3){
@@ -755,11 +759,11 @@ console.log(USG);
 					},
 					appendTierHTML: function ( tier ) {
 						
-						console.log("appendTierHTML");
 						var tierHTML = tier.getHTML(),
 						classname = "#heatmap-overview";
 
 						$( classname ).append( tierHTML );
+						console.log($("#tier1-heatmap-overview-2").width());
 
 					},
 					addTierHTML: function( tiers ) {
@@ -789,8 +793,6 @@ console.log(USG);
 							var tier = this.tiers[ whichTiers[i] ];
 
 							this.tiers[ whichTiers[0] ].connect( tier );
-
-							console.log(whichTiers[0] + " connected to " + whichTiers[i]);
 						
 						}
 
@@ -896,17 +898,17 @@ console.log(USG);
 							// Process loaded HTML
 							$.when(request).done(function( data ){
 
-								var rId = "id=\"heatmap-tier" + thisObj.type + "\""
+								var rId = "id=\"heatmap-tier" + thisObj.type;
 								var rId = new RegExp( rId , "g" );
 
 								// Add specialized id for this tier
-								var rReplace = "id=\"tier" + thisObj.type + "-" + ( thisObj.html.parentContainer ) + "-" + thisObj.key + "\""; 
+								var rReplace = "id=\"tier" + thisObj.type + "-" + ( thisObj.html.parentContainer ) + "-" + thisObj.key; 
 								data = data.replace( rId , rReplace );
 								
 								thisObj.html.markup = data;
 								thisObj.html.id = "tier" + thisObj.type + "-" + thisObj.html.parentContainer + "-" + thisObj.key;
 
-								console.log("Tier " + thisObj.type + " " + thisObj.visualizationKey + ": \n index: " + thisObj.key);
+								console.log(thisObj.html.id);
 
 								deferred.resolve(); 
 
@@ -1444,10 +1446,7 @@ console.log(USG);
 								height: 2
 							}
 						};
-
 						
-						this.html.id = "#" + parentKey;
-
 					};
 					Tier1.prototype = Object.create( TierInstance.prototype, {
 						visualize: {
@@ -1466,7 +1465,7 @@ console.log(USG);
 						},
 						calculateGridSize: {
 							value: function () {
-								var id = "#" + this.html.id,
+								var id = "#tier1-" + this.parentKey + "-" + this.key,
 								height = $( "#vizualizations-holder" ).height(),
 								width = $( id ).width();
 
@@ -1496,9 +1495,13 @@ console.log(USG);
 						},
 						createsvg: {
 							value: function () {
+								console.log(this.html.id)
+
 								var id = "#" + this.html.id,
 								height = $( "#vizualizations-holder" ).height(),
 								width = $( id ).width();
+								console.log(width);
+								console.log($("#tier1-heatmap-overview-2").width());
 
 								if(this.mode == "overview"){
 									$(id).append('<button class="btn btn-default navbar-btn btn-sm overview-view-btn" id="' + this.dataset.getName() + '" type="submit" ><span class="glyphicon glyphicon-eye-open" aria-hidden="true" ></span></button>');
@@ -1507,12 +1510,8 @@ console.log(USG);
 									height -= buttonHeight;
 
 									$(".overview-view-btn").click( function(e) {
-										console.log(this);
-										console.log(e);
-
+										
 										var id = "#view-heatmap-" + $(this).attr("id");
-										console.log(id);
-
 										$(id).click();
 										
 									});
@@ -1625,13 +1624,13 @@ console.log(USG);
 						}, 
 						createsvg: {
 							value: function () {
-								var id = "#heatmap-tier2-columns-svg-container";
-								
+								var id = "#" + this.html.id + "-columns-svg-container";
+
 								var height = 250;
 								var width = $( id ).width();
 								this.columnsSvg = new Svg( height, width, id, this.html.parentContainer );
 								
-								id = "#heatmap-tier2-grid-svg-container";
+								id = "#" + this.html.id + "-grid-svg-container";
 								height = $( "#vizualizations-holder" ).height() - this.columnsSvg.dimensions.height
 								
 								width = $( id ).width();
@@ -1887,7 +1886,7 @@ console.log(USG);
 						createsvg: {
 							value: function () {
 								var thisObj = this;
-								var id = "#heatmap-tier3-svg-container",
+								var id = "#" + thisObj.html.id + "-inner",
 								width = $( id ).width(),
 								height = (thisObj.grid.size.height * thisObj.metricSet.getCount( thisObj.dataKey , thisObj.visualizationKey )) + 50 ;
 
@@ -2559,7 +2558,6 @@ console.log(USG);
 				// Holds metric type data
 				// Defined in USG-constants file
 				// USG.constants.metric
-				console.log(constants);
 				var METRIC_PROP = constants.metric;
 				
 				// Class MetricSet
@@ -2593,8 +2591,8 @@ console.log(USG);
 								
 								// Create a category, if doesn't exist
 								if( !thisObj.categories[ thisMetric.category.name ] ){
-									console.log("category created:")
-									console.log(thisMetric.category.name);
+									// console.log("category created:")
+									// console.log(thisMetric.category.name);
 									thisObj.categories[ thisMetric.category.name ] = new Category( thisMetric.category.name , thisMetric.permuted );
 								}
 
@@ -3240,7 +3238,6 @@ console.log(USG);
 					name = "#" + name;
 					$( name ).on("click", function(e){
 						e.preventDefault();
-						console.log($(e.target).attr("class"));
 						var visualizationKey = $(e.target).attr("class");
 						showVisualization( visualizationKey );
 					});
@@ -3261,7 +3258,6 @@ console.log(USG);
 						$('#navbar-displayed-visualization-name').html( visualizationKey );
 					}
 					
-
 				};
 				
 
@@ -3411,7 +3407,6 @@ console.log(USG);
 		reader.onloadend = function (event) {
 
 			data = event.target.result;
-			console.log(thisObj);
 			thisObj.gui.successUpload();
 
 			thisObj.visualization.parseData( name , data );
