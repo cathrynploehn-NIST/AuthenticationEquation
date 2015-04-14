@@ -689,6 +689,11 @@ console.log(USG);
 								thisObj.appendTierHTML( tiers[index] );
 								console.log($("#tier1-heatmap-overview-2").width());
 								tiers[index].initialize();
+
+								for(var i = 1; i < tiers.length-1; i++){
+									tiers[i].visualize();
+								}
+
 							}); 
 
 						});
@@ -1286,7 +1291,7 @@ console.log(USG);
 						    for(var i = 0; i < thisObj.connectedTiers.length; i++){
 						    	
 						    	if( thisObj.connectedTiers[i].hover ) {
-						    		thisObj.connectedTiers[i].hover( metricName , type , selector , row );
+						    		thisObj.connectedTiers[i].hover( metricName , type , selector , row , (thisObj.key - 1) );
 						    	}
 
 						    }
@@ -1866,8 +1871,7 @@ console.log(USG);
 							}
 						};
 
-						// Id of the SVG HTML element
-						// this.svg.html.id = "#heatmap-tier3-svg-container";
+						this.datasetIndex = 0;
 						
 					};
 					Tier3.prototype = Object.create( TierInstance.prototype, {
@@ -2216,7 +2220,7 @@ console.log(USG);
 									
 								thisObj.draw( draw );	
 			
-								thisObj.draw( thisObj.populateValues , 1 );
+								thisObj.draw( thisObj.populateValues , 1 , 0 );
 								
 
 							},
@@ -2301,13 +2305,19 @@ console.log(USG);
 						    writable: true
 						},
 						hover: {
-							value: function ( metricName , type , selector , row ) {
+							value: function ( metricName , type , selector , row , datasetIndex ) {
+
+								this.datasetIndex = datasetIndex;
 
 								if( row ){
 									this.draw( this.populateValues , row );
 									this.draw( this.colorBlocks , row );
 
 									this.boldLabels( metricName , type );
+								
+									if ( thisObj.mode == "overview" ) {
+										$().html();
+									} 
 								}
 								
 
@@ -2322,7 +2332,7 @@ console.log(USG);
 								var svg = thisObj.svg.obj;
 
 								if ( thisObj.mode == "overview" ) {
-									var dataset = thisObj.dataset[0].getData();
+									var dataset = thisObj.dataset[thisObj.datasetIndex].getData();
 								} else {
 									var dataset = thisObj.dataset.getData();
 								}
@@ -2396,9 +2406,11 @@ console.log(USG);
 								var svg = thisObj.svg.obj;
 
 								if ( thisObj.mode == "overview" ) {
-									var dataset = thisObj.dataset[0].getData();
+									var dataset = thisObj.dataset[thisObj.datasetIndex].getData();
+									var dataKey = thisObj.dataset[thisObj.datasetIndex].getName();
 								} else {
 									var dataset = thisObj.dataset.getData();
+									var dataKey = thisObj.dataKey;
 								}
 
 								var data = dataset[selector];
@@ -2407,7 +2419,7 @@ console.log(USG);
 
 								var rowObj = svg.selectAll(rowClass);
 
-						    	var colorScale = thisObj.metricSet.getNormalColorScale( metricName , thisObj.dataKey , thisObj.visualizationKey );
+						    	var colorScale = thisObj.metricSet.getNormalColorScale( metricName , dataKey , thisObj.visualizationKey );
 
 								rowObj.style( "fill", function( d , i ){ return colorScale( data[ metricName ]) });
 
@@ -3059,17 +3071,38 @@ console.log(USG);
 						this.domainVal[ dataLocation ] = {}; // Stores max and min for the current dataset
 
 						// If domain type not null (meaning it's not a string), set the domain values
-						if ( this.domainType ) {
+						if ( thisObj.domainType ) {
 
 							// Min needs to be calculated
-							if ( this.domainType.min === "min" ) {
+							if ( thisObj.domainType.min === "min" ) {
 
 								// Find and store minimum for current dataset
 								var newDataMin = d3.min( dataset , function (d) { return d[ thisObj.key ]; });
-								this.domainVal[ dataLocation ].min = newDataMin;
+
+								// Check if it has an altered pair
+								if(thisObj.permuted) {
+									if (thisObj.permuted.type == "original"){
+										var pairName = "new" + thisObj.key;
+										console.log(pairName)
+										console.log(thisObj.key);
+										var pairMin = d3.min( dataset , function (d) { return d[ pairName ]; });
+
+									} else {
+										var rPermuted = /(new)/g;
+										var pairName = thisObj.key;
+										pairName = pairName.replace(rPermuted, "");
+
+										var pairMin = d3.min( dataset , function (d) { return d[ pairName ]; });
+									}
+
+									newDataMin = d3.min([ pairMin , newDataMin ]);
+
+								}
+
+								thisObj.domainVal[ dataLocation ].min = newDataMin;
 
 								// Compare with existing global minimum and store result
-								this.domainVal.global.min = d3.min([ newDataMin, thisObj.domainVal.global.min]);
+								thisObj.domainVal.global.min = d3.min([ newDataMin, thisObj.domainVal.global.min]);
 
 							// There is the same min for all datasets
 							} else {
@@ -3092,6 +3125,26 @@ console.log(USG);
 								// Find and store maximum for current dataset
 								var newDataMax = d3.max( dataset , function (d) { return d[ thisObj.key ]; });
 								this.domainVal[ dataLocation ].max = newDataMax;
+
+								// Check if it has an altered pair
+								if(thisObj.permuted) {
+									if (thisObj.permuted.type == "original"){
+										console.log("ORIGINAL TYPE ================")
+										var pairName = "new" + thisObj.key;
+										var pairMax = d3.max( dataset , function (d) { return d[ pairName ]; });
+
+									} else {
+										console.log("New TYPE ................")
+										var rPermuted = /(new)/g;
+										var pairName = thisObj.key;
+										pairName = pairName.replace(rPermuted, "");
+
+										var pairMax = d3.max( dataset , function (d) { return d[ pairName ]; });
+									}
+
+									newDataMin = d3.max([ pairMax , newDataMin ]);
+
+								}
 
 								// Compare with existing global maximum and store result
 								this.domainVal.global.max = d3.max([ newDataMax, thisObj.domainVal.global.max]);
@@ -3118,40 +3171,64 @@ console.log(USG);
 
 						if ( thisObj.domainType ) {	
 							if( visualizationKey == "global" ){
-								var min =  thisObj.domainVal[ visualizationKey ].min;
-								var max =  thisObj.domainVal[ visualizationKey ].max;
+								var min =  thisObj.domainVal.global.min;
+								var max =  thisObj.domainVal.global.max;
+							
+			 					var domain = [min, max];
+			
+								if( !this.colorScale[ visualizationKey ] ){
+									this.colorScale[ visualizationKey ] = {};
+								}
+
+								this.colorScale[ visualizationKey ].normal = d3.scale.quantile()
+									.domain(domain)
+									.range(colorscheme.normal);
+
+								this.colorScale[ visualizationKey ].highlight = d3.scale.quantile()
+									.domain(domain)
+									.range(colorscheme.highlight);
+
 							} else {
 								var min =  thisObj.domainVal[ key ].min;
 								var max =  thisObj.domainVal[ key ].max;
-							}
 							
-		 					var domain = [min, max];
-		
-							if( !this.colorScale[ key ] ){
-								this.colorScale[ key ] = {};
-							}
+			 					var domain = [min, max];
+			
+								if( !this.colorScale[ key ] ){
+									this.colorScale[ key ] = {};
+								}
 
-							if( !this.colorScale[ key ][ visualizationKey ] ){
-								this.colorScale[ key ][ visualizationKey ] = {};
-							}
-		
-							this.colorScale[ key ][ visualizationKey ].normal = d3.scale.quantile()
-								.domain(domain)
-								.range(colorscheme.normal);
+								if( !this.colorScale[ key ][ visualizationKey ] ){
+									this.colorScale[ key ][ visualizationKey ] = {};
+								}
+			
+								this.colorScale[ key ][ visualizationKey ].normal = d3.scale.quantile()
+									.domain(domain)
+									.range(colorscheme.normal);
 
-							this.colorScale[ key ][ visualizationKey ].highlight = d3.scale.quantile()
-								.domain(domain)
-								.range(colorscheme.highlight);
+								this.colorScale[ key ][ visualizationKey ].highlight = d3.scale.quantile()
+									.domain(domain)
+									.range(colorscheme.highlight);
+
+							}
 						}
 					},
 					getNormalColorScale: function ( key , visualizationKey ) {
-
-						return this.colorScale[ key ][ visualizationKey ].normal;
-
+						if( visualizationKey == "global" ){
+							console.log("GLOBAL:::: "+ this.label)
+							console.log(this.colorScale[ visualizationKey ].normal);
+							return this.colorScale[ visualizationKey ].normal;
+						} else {
+							return this.colorScale[ key ][ visualizationKey ].normal;
+						}
+						
 					},
 					getHighlightColorScale: function ( key , visualizationKey ) {
-
-						return this.colorScale[ key ][ visualizationKey ].highlight;
+						if( visualizationKey == "global" ){
+							return this.colorScale[ visualizationKey ].highlight;
+						} else {
+							return this.colorScale[ key ][ visualizationKey ].highlight;
+						}
 
 					},
 					setVisibility: function ( key , visualizationKey , visiblility ) {
