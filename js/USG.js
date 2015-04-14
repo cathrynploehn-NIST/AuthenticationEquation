@@ -405,7 +405,7 @@ console.log(USG);
 
 						if ( data ) {
 							// console.log( "Metrics created:");
-							// console.log( thisObj.metricSet );
+							console.log( thisObj.metricSet );
 							dataset = data;
 							// console.log( "Data Loaded:");
 							// console.log( data );
@@ -468,7 +468,7 @@ console.log(USG);
 
 						// Initialize metric domains
 						thisObj.metricSet.setDomains( thisObj.datasets[ name ], name );
-						
+						console.log(thisObj.metricSet);
 						if( callback ) {
 
 							callback( name );
@@ -637,7 +637,7 @@ console.log(USG);
 							thisObj.setMetricColorScheme( "overview" );
 							thisObj.metricSet.setDefaultVisibility( thisObj.dataKey , "global" );
 
-							console.log("Create heatmap with default config");
+							console.log("Create overview heatmap");
 
 							// Create new tier1, tier3
 							var defTiersCreated = $.Deferred();
@@ -878,9 +878,7 @@ console.log(USG);
 						};
 
 						this.type = type;	
-						
-						console.log("Tier " + this.type + " " + this.visualizationKey + ": \n index: " + key);
-						
+												
 						this.connectedTiers = [];
 
 						this.hiddenRows = {};
@@ -912,8 +910,6 @@ console.log(USG);
 								
 								thisObj.html.markup = data;
 								thisObj.html.id = "tier" + thisObj.type + "-" + thisObj.html.parentContainer + "-" + thisObj.key;
-
-								console.log(thisObj.html.id);
 
 								deferred.resolve(); 
 
@@ -1500,14 +1496,11 @@ console.log(USG);
 						},
 						createsvg: {
 							value: function () {
-								console.log(this.html.id)
 
 								var id = "#" + this.html.id,
 								height = $( "#vizualizations-holder" ).height(),
 								width = $( id ).width();
-								console.log(width);
-								console.log($("#tier1-heatmap-overview-2").width());
-
+								
 								if(this.mode == "overview"){
 									$(id).append('<button class="btn btn-default navbar-btn btn-sm overview-view-btn" id="' + this.dataset.getName() + '" type="submit" ><span class="glyphicon glyphicon-eye-open" aria-hidden="true" ></span></button>');
 
@@ -3083,8 +3076,6 @@ console.log(USG);
 								if(thisObj.permuted) {
 									if (thisObj.permuted.type == "original"){
 										var pairName = "new" + thisObj.key;
-										console.log(pairName)
-										console.log(thisObj.key);
 										var pairMin = d3.min( dataset , function (d) { return d[ pairName ]; });
 
 									} else {
@@ -3129,12 +3120,10 @@ console.log(USG);
 								// Check if it has an altered pair
 								if(thisObj.permuted) {
 									if (thisObj.permuted.type == "original"){
-										console.log("ORIGINAL TYPE ================")
 										var pairName = "new" + thisObj.key;
 										var pairMax = d3.max( dataset , function (d) { return d[ pairName ]; });
 
 									} else {
-										console.log("New TYPE ................")
 										var rPermuted = /(new)/g;
 										var pairName = thisObj.key;
 										pairName = pairName.replace(rPermuted, "");
@@ -3142,7 +3131,7 @@ console.log(USG);
 										var pairMax = d3.max( dataset , function (d) { return d[ pairName ]; });
 									}
 
-									newDataMin = d3.max([ pairMax , newDataMin ]);
+									newDataMax = d3.max([ pairMax , newDataMax ]);
 
 								}
 
@@ -3215,9 +3204,7 @@ console.log(USG);
 					},
 					getNormalColorScale: function ( key , visualizationKey ) {
 						if( visualizationKey == "global" ){
-							console.log("GLOBAL:::: "+ this.label)
-							console.log(this.colorScale[ visualizationKey ].normal);
-							return this.colorScale[ visualizationKey ].normal;
+							return this.colorScale.global.normal;
 						} else {
 							return this.colorScale[ key ][ visualizationKey ].normal;
 						}
@@ -3225,7 +3212,7 @@ console.log(USG);
 					},
 					getHighlightColorScale: function ( key , visualizationKey ) {
 						if( visualizationKey == "global" ){
-							return this.colorScale[ visualizationKey ].highlight;
+							return this.colorScale.global.highlight;
 						} else {
 							return this.colorScale[ key ][ visualizationKey ].highlight;
 						}
