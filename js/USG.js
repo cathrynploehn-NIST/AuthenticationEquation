@@ -464,35 +464,10 @@ this.visualization = (function(){
 					// Add dataset
 					thisObj.datasets[ name ] = thisObj.createData.create( data , name );
 
-<<<<<<< HEAD
 					// Initialize metric domains
 					thisObj.metricSet.setDomains( thisObj.datasets[ name ], name );
 					
 					if( callback ) {
-=======
-			            return d;
-
-			        }, function done ( error, data ) {
-						
-			        	var rReplace = /\.csv/g;
-						dataLocation = dataLocation.replace(rReplace, "");
-
-						if ( data ) {
-							// console.log( "Metrics created:");
-							console.log( thisObj.metricSet );
-							dataset = data;
-							// console.log( "Data Loaded:");
-							// console.log( data );
-						}
-						
-						if ( error ){
-							console.log( error.stack );
-							this.alertMessage( "Error loading data." );
-						}
-
-						// Add dataset
-						thisObj.datasets[ dataLocation ] = thisObj.createData.create( data , dataLocation );
->>>>>>> origin/restructuring
 
 						callback( name );
 
@@ -510,15 +485,8 @@ this.visualization = (function(){
 				$("#vizualizations-holder").html(''); 
 				$("#navbar-displayed-visualization").html('');
 
-<<<<<<< HEAD
 				this.visualizations[ "heatmap-overview" ] = null;
 			}
-=======
-						// Initialize metric domains
-						thisObj.metricSet.setDomains( thisObj.datasets[ name ], name );
-						console.log(thisObj.metricSet);
-						if( callback ) {
->>>>>>> origin/restructuring
 
 		};
 
@@ -727,11 +695,7 @@ this.visualization = (function(){
 								tiers[i].visualize();
 							}
 
-<<<<<<< HEAD
 						}); 
-=======
-							console.log("Create overview heatmap");
->>>>>>> origin/restructuring
 
 					});
 
@@ -1017,7 +981,6 @@ this.visualization = (function(){
 						this.visualize();
 							
 
-<<<<<<< HEAD
 					},
 					// Returns the HTML markup of this tier.
 					getHTML: function (  ) {
@@ -1034,11 +997,6 @@ this.visualization = (function(){
 						
 						thisObj.countGutters();
 						this.gutterCount = 0;
-=======
-						this.type = type;	
-												
-						this.connectedTiers = [];
->>>>>>> origin/restructuring
 
 						thisObj.visibleColumnCount = 0;
 
@@ -1057,13 +1015,9 @@ this.visualization = (function(){
 
 										if( thisObj.metricSet.isPermuted( metricName ) ){
 
-<<<<<<< HEAD
 											var currentMetricCount = currentMetricIndex - nonPermutedMetricCount;
 
 										} else {
-=======
-								deferred.resolve(); 
->>>>>>> origin/restructuring
 
 											var currentMetricCount = currentMetricIndex;
 
@@ -1695,7 +1649,6 @@ this.visualization = (function(){
 							thisObj.shiftPasswordLabels();
 
 						},
-<<<<<<< HEAD
 						enumerable: true,
 					    configurable: true, 
 					    writable: true
@@ -1703,17 +1656,6 @@ this.visualization = (function(){
 					drawLabels:{
 						value: function ( ) {
 							var thisObj = this;
-=======
-						createsvg: {
-							value: function () {
-
-								var id = "#" + this.html.id,
-								height = $( "#vizualizations-holder" ).height(),
-								width = $( id ).width();
-								
-								if(this.mode == "overview"){
-									$(id).append('<button class="btn btn-default navbar-btn btn-sm overview-view-btn" id="' + this.dataset.getName() + '" type="submit" ><span class="glyphicon glyphicon-eye-open" aria-hidden="true" ></span></button>');
->>>>>>> origin/restructuring
 
 							this.drawPasswordLabels();
 							this.draw( thisObj.drawColumnLabels );
@@ -3219,43 +3161,11 @@ this.visualization = (function(){
 							var newDataMax = d3.max( dataset , function (d) { return d[ thisObj.key ]; });
 							this.domainVal[ dataLocation ].max = newDataMax;
 
-<<<<<<< HEAD
 							// Check if it has an altered pair
 							if(thisObj.permuted) {
 								if (thisObj.permuted.type == "original"){
 									var pairName = "new" + thisObj.key;
 									var pairMax = d3.max( dataset , function (d) { return d[ pairName ]; });
-=======
-				};
-				MetricInstance.prototype = {
-					setDomain: function ( data , dataLocation ) {
-						var thisObj = this; // The current Metric Instance
-						var dataset = data.getData();
-						this.domainVal[ dataLocation ] = {}; // Stores max and min for the current dataset
-
-						// If domain type not null (meaning it's not a string), set the domain values
-						if ( thisObj.domainType ) {
-
-							// Min needs to be calculated
-							if ( thisObj.domainType.min === "min" ) {
-
-								// Find and store minimum for current dataset
-								var newDataMin = d3.min( dataset , function (d) { return d[ thisObj.key ]; });
-
-								// Check if it has an altered pair
-								if(thisObj.permuted) {
-									if (thisObj.permuted.type == "original"){
-										var pairName = "new" + thisObj.key;
-										var pairMin = d3.min( dataset , function (d) { return d[ pairName ]; });
-
-									} else {
-										var rPermuted = /(new)/g;
-										var pairName = thisObj.key;
-										pairName = pairName.replace(rPermuted, "");
-
-										var pairMin = d3.min( dataset , function (d) { return d[ pairName ]; });
-									}
->>>>>>> origin/restructuring
 
 								} else {
 									var rPermuted = /(new)/g;
@@ -3269,33 +3179,8 @@ this.visualization = (function(){
 
 							}
 
-<<<<<<< HEAD
 							// Compare with existing global maximum and store result
 							this.domainVal.global.max = d3.max([ newDataMax, thisObj.domainVal.global.max]);
-=======
-							// Max needs to be calculated
-							if ( this.domainType.max === "max" ) {
-								
-								// Find and store maximum for current dataset
-								var newDataMax = d3.max( dataset , function (d) { return d[ thisObj.key ]; });
-								this.domainVal[ dataLocation ].max = newDataMax;
-
-								// Check if it has an altered pair
-								if(thisObj.permuted) {
-									if (thisObj.permuted.type == "original"){
-										var pairName = "new" + thisObj.key;
-										var pairMax = d3.max( dataset , function (d) { return d[ pairName ]; });
-
-									} else {
-										var rPermuted = /(new)/g;
-										var pairName = thisObj.key;
-										pairName = pairName.replace(rPermuted, "");
-
-										var pairMax = d3.max( dataset , function (d) { return d[ pairName ]; });
-									}
-
-									newDataMax = d3.max([ pairMax , newDataMax ]);
->>>>>>> origin/restructuring
 
 						// There is the same max for all datasets
 						} else {
@@ -3358,24 +3243,12 @@ this.visualization = (function(){
 								.domain(domain)
 								.range(colorscheme.highlight);
 
-<<<<<<< HEAD
-=======
-							}
-						}
-					},
-					getNormalColorScale: function ( key , visualizationKey ) {
-						if( visualizationKey == "global" ){
-							return this.colorScale.global.normal;
-						} else {
-							return this.colorScale[ key ][ visualizationKey ].normal;
->>>>>>> origin/restructuring
 						}
 					}
 				},
 				getNormalColorScale: function ( key , visualizationKey ) {
 					if( visualizationKey == "global" ){
 						
-<<<<<<< HEAD
 						return this.colorScale[ visualizationKey ].normal;
 					} else {
 						return this.colorScale[ key ][ visualizationKey ].normal;
@@ -3388,15 +3261,6 @@ this.visualization = (function(){
 					} else {
 						return this.colorScale[ key ][ visualizationKey ].highlight;
 					}
-=======
-					},
-					getHighlightColorScale: function ( key , visualizationKey ) {
-						if( visualizationKey == "global" ){
-							return this.colorScale.global.highlight;
-						} else {
-							return this.colorScale[ key ][ visualizationKey ].highlight;
-						}
->>>>>>> origin/restructuring
 
 				},
 				setVisibility: function ( key , visualizationKey , visiblility ) {
