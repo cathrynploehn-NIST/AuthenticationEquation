@@ -6,6 +6,10 @@
 	height: 100%;
 }
 
+#vizualizations-holder-container {
+    overflow: hidden;    
+}
+
 #navbar-main, .navbar-visualization {
 
     background-color: white;
@@ -41,7 +45,7 @@
     display: block;
 }
 #vizualizations-holder {
-    
+
     #heatmap-overview-container {
 
         div.tier {
