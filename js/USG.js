@@ -331,21 +331,12 @@ console.log(USG);
 				// @Param: dataLocation: String. Key representing where the dataFile is located ( no .csv )
 				// @Param: config: String. What type of configuration should the heatmap use. Accepted type(s): "default"
 				addHeatmapSet: function ( dataLocation, config ){
+					// Create visualization key
+					var visualizationKey = "heatmap-" + dataLocation;
 					
 					// If the dataset exists, visualize
 					if( this.datasets[ dataLocation ] ){
-						gui.showVisualization( "heatmap-overview" );
 
-						// Create visualization key
-						var visualizationKey = "heatmap-" + dataLocation;
-
-						// Create heatmap in visualizations[] with "heatmap-[dataLocation] as a key"
-						// Parameters: dataLocation: where data is located, visualizationKey: unique identifier for this visualization , dataset: dataset object corresponding with the dataLocation identifier, config: type of configuration the heatmap is using, metricSet: metricSet object 
-						this.visualizations[visualizationKey] = heatmap.create( dataLocation , visualizationKey , [this.datasets[ dataLocation ]] , config , this.metricSet );
-						
-						gui.addVisualization( visualizationKey );
-						gui.showVisualization( visualizationKey );
-						
 						// Add data to the heatmap overview
 						if( !this.visualizations[ "heatmap-overview" ] ){
 							
@@ -354,15 +345,26 @@ console.log(USG);
 
 						} else {
 
-							gui.showVisualization( "heatmap-overview" );
 							this.visualizations[ "heatmap-overview" ].addData( dataLocation , visualizationKey , this.datasets[ dataLocation ] );
 						
 						}
 
-						gui.showVisualization( visualizationKey );
-						
-						// $(classnameShow).hide();
+						$( "#heatmap-overview-container" ).delay(1000).show(0, function(){
+							
 
+							// Create heatmap in visualizations[] with "heatmap-[dataLocation] as a key"
+							// Parameters: dataLocation: where data is located, visualizationKey: unique identifier for this visualization , dataset: dataset object corresponding with the dataLocation identifier, config: type of configuration the heatmap is using, metricSet: metricSet object 
+							this.visualizations[visualizationKey] = heatmap.create( dataLocation , visualizationKey , [this.datasets[ dataLocation ]] , config , this.metricSet );
+							
+							gui.addVisualization( visualizationKey );
+							gui.showVisualization( visualizationKey );
+							
+							
+
+							gui.showVisualization( visualizationKey );
+						});
+
+						
 
 					} else {
 
