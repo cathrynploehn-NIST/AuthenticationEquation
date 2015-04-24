@@ -1,21 +1,23 @@
 .parcoords > svg, .parcoords > canvas { 
-  font: 14px sans-serif;
+  font-size: 9pt;
+  font-family: Consolas, courier;
   position: absolute;
 }
 .parcoords > canvas {
   pointer-events: none;
 }
 
-.parcoords text.label {
-  cursor: default;
+.parcoords text.parcoords-label {
+  cursor: move;
 }
 
 .parcoords rect.background {
   fill: transparent;
 }
 .parcoords rect.background:hover {
-  fill: rgba(120,120,120,0.2);
+  fill: rgba(120,120,120,0.07);
 }
+
 .parcoords .resize rect {
   fill: rgba(0,0,0,0.1);
 }
@@ -25,7 +27,7 @@
 }
 .parcoords .axis line, .parcoords .axis path {
   fill: none;
-  stroke: #222;
+  stroke: rgba(0,0,0,0.1);
   shape-rendering: crispEdges;
 }
 .parcoords canvas {
@@ -44,4 +46,28 @@
 	-moz-user-select: none;
 	-ms-user-select: none;
 	user-select: none;
+}
+
+
+.dimension {
+  
+  &:hover {
+    .axis {
+      .tick{
+        fill: rgba(0,0,0,0.5);
+      }
+    }
+
+    font-weight: bold;
+
+  }
+
+  .axis{
+
+    .tick {
+      fill: transparent;
+    }
+
+  }
+
 }

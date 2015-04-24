@@ -84,7 +84,7 @@ var USG = USG || {};
 						permuted: true
 					},
 					"unsentenceLikeCaps" : {
-						label: "Unsentence-like Capitalization",
+						label: "Unsent.-like Capitlztn",
 						dataType:  "int",
 						domainType : DOMAIN_TYPES.ZERO_MAX,
 						category: {
@@ -329,15 +329,15 @@ var USG = USG || {};
 				
 				// If the dataset exists, visualize
 				if( this.datasets[ dataLocation ] ){
-					gui.showVisualization( "heatmap-overview" );
+					// gui.showVisualization( "heatmap-overview" );
 
-////////////////////// Create heatmap /////
-					// Create visualization key
-					var visualizationKey = "heatmap-" + dataLocation;
+					// ////////////////////// Create heatmap /////
+					// // Create visualization key
+					// var visualizationKey = "heatmap-" + dataLocation;
 
-					// Create heatmap in visualizations[] with "heatmap-[dataLocation] as a key"
-					// Parameters: dataLocation: where data is located, visualizationKey: unique identifier for this visualization , dataset: dataset object corresponding with the dataLocation identifier, config: type of configuration the heatmap is using, metricSet: metricSet object 
-					// this.visualizations[visualizationKey] = visualization.create( dataLocation , visualizationKey , [this.datasets[ dataLocation ]] , "heatmap-default" , this.metricSet );
+					// // Create heatmap in visualizations[] with "heatmap-[dataLocation] as a key"
+					// // Parameters: dataLocation: where data is located, visualizationKey: unique identifier for this visualization , dataset: dataset object corresponding with the dataLocation identifier, config: type of configuration the heatmap is using, metricSet: metricSet object 
+					// this.visualizations[visualizationKey] = visualization.create( dataLocation , visualizationKey , [this.datasets[ dataLocation ]] , "heatmap" , this.metricSet );
 
 					// gui.addVisualization( visualizationKey );
 					// gui.showVisualization( visualizationKey );
@@ -358,7 +358,8 @@ var USG = USG || {};
 					// gui.showVisualization( visualizationKey );
 					
 					visualizationKey = "parcoords-" + dataLocation;
-					this.visualizations[visualizationKey] = visualization.create( dataLocation , visualizationKey , [this.datasets[ dataLocation ]] , "parcoords-default" , this.metricSet );
+					this.visualizations[visualizationKey] = visualization.create( dataLocation , visualizationKey , [this.datasets[ dataLocation ]] , "parcoords" , this.metricSet );
+					gui.addVisualization( visualizationKey );
 					gui.showVisualization( visualizationKey );
 
 				} else {
@@ -414,7 +415,6 @@ var USG = USG || {};
 					
 					data = d3.csv.parse( file ); // Parse data using d3.js
 
-					
 		        	for( var i = 0; i < data.length ; i++ ){ // For each property in a data row ( data ) 
 			        	for ( var prop in data[i] ) {
 
@@ -560,7 +560,7 @@ var USG = USG || {};
 				
 				this.key = visualizationKey; // Key for specific heatmap
 				this.visualizationKey = visualizationKey;
-
+				this.mode = config;
 				this.container = this.key + "-container";
 
 				this.dataKey = dataKey; // Key for data heatmap is representing
@@ -585,14 +585,12 @@ var USG = USG || {};
 					thisObj.metricSet.setDefaultVisibility( thisObj.dataKey , thisObj.visualizationKey );
 
 					// default config	
-					if( config == "heatmap-default" ){
-
+					if( config == "heatmap" ){
 						console.log("Create heatmap with default config");
 
 						// Create new tier1, tier2, tier3
 						var defTiersCreated = $.Deferred();
-						thisObj.createTiers(["HeatmapTier2" , "HeatmapTier1" , "HeatmapTier3"] , thisObj.datasets[0]);
-						console.log(thisObj.tiers);
+						thisObj.createTiers(["HeatmapTier2" , "HeatmapTier1" , "Controls"] , thisObj.datasets[0], thisObj.mode);
 						thisObj.connectTiers([0,1,2]);
 						thisObj.connectTiers([1,0,2]);
 						thisObj.connectTiers([2,0,1]);
@@ -609,19 +607,18 @@ var USG = USG || {};
 						});
 						
 					} else if ( config == "heatmap-overview" ) {
+						console.log("Create heatmap with global config");
 
 						thisObj.key = "heatmap-overview";
 						thisObj.container = "heatmap-overview-container";
 
-						thisObj.setMetricColorScheme( "overview" );
+						thisObj.setMetricColorScheme( "heatmap-overview" );
 						thisObj.metricSet.setDefaultVisibility( thisObj.dataKey , "global" );
-
-						console.log("Create heatmap with default config");
 
 						// Create new tier1, tier3
 						var defTiersCreated = $.Deferred();
-						thisObj.createTier("HeatmapTier3" , thisObj.datasets , "overview");
-						thisObj.createTier("HeatmapTier1" , thisObj.datasets[0] , "overview");
+						thisObj.createTier("Controls" , thisObj.datasets , thisObj.mode);
+						thisObj.createTier("HeatmapTier1" , thisObj.datasets[0] , thisObj.mode);
 						thisObj.connectTiers([0,1]);
 						thisObj.connectTiers([1,0]);
 						defTiersCreated.resolve(thisObj.tiers);
@@ -639,20 +636,24 @@ var USG = USG || {};
 
 						});
 
-					} else if( config == "parcoords-default" ){
+					} else if( config == "parcoords" ){
 
 						console.log("Create parallel coordinates with default config");
+						thisObj.setMetricColorScheme( "heatmap-overview" );
+						thisObj.metricSet.setDefaultVisibility( thisObj.dataKey , "global" );
 
 						// Create new tier1, tier2, tier3
 						var defTiersCreated = $.Deferred();
 						thisObj.createTier("Parcoords" , thisObj.datasets);
+						thisObj.createTier("Controls" , thisObj.datasets[0] , "parcoords");
+						thisObj.connectTiers([1,0]);
 						console.log(thisObj.tiers);
 						defTiersCreated.resolve(thisObj.tiers);
 
 						// Load html for tiers
 						defTiersCreated.done(function(tiers){
 
-							$.when( tiers[0].loadHTML() ).done(function () {
+							$.when( tiers[0].loadHTML(), tiers[1].loadHTML() ).done(function () {
 								thisObj.addTierHTML( tiers );
 								thisObj.initializeTiers( );
 							}); 
@@ -670,14 +671,14 @@ var USG = USG || {};
 				addData: function ( dataLocation , visualizationKey , dataset ) {
 					var thisObj = this;
 
-					thisObj.setMetricColorScheme( "overview" );
+					thisObj.setMetricColorScheme( "heatmap-overview" );
 					
 					thisObj.datasets.push( dataset );
 					var index = thisObj.datasets.length;
 					
 					if( thisObj.key == "heatmap-overview" ){
 						var defTiersCreated = $.Deferred();
-						thisObj.createTier("HeatmapTier1" , dataset , "overview");
+						thisObj.createTier("HeatmapTier1" , dataset , "heatmap-overview");
 						thisObj.connectTiers([0,index]);
 						thisObj.connectTiers([index,0]);
 						defTiersCreated.resolve(thisObj.tiers);
@@ -711,7 +712,7 @@ var USG = USG || {};
 				setMetricColorScheme: function ( mode ) {
 					var visualization;
 
-					if( mode == "overview" ){
+					if( mode == "heatmap-overview" || mode == "parcoords"){
 						visualization = "global";
 					} else {
 						visualization = this.visualizationKey;
@@ -722,18 +723,18 @@ var USG = USG || {};
 				}, 
 				// Create and add tiers with the same dataset to this object.
 				// @Param: whichTiers: Array. Each index in the array represents a new tier to create. The value of each index represents the type of tier to create.
-				createTiers: function ( whichTiers , dataset ) {
+				createTiers: function ( whichTiers , dataset , mode ) {
 					var thisObj = this;
 
 					for (var i = 0; i < whichTiers.length; i++) {
 						var index = thisObj.tiers.length; // Represents the unique identifier of the new tier
 
 						// Ensure the type is accounted for
-						if( whichTiers[i] == "HeatmapTier1" || whichTiers[i] == "HeatmapTier2" || whichTiers[i] == "HeatmapTier3" ){
+						if( whichTiers[i] == "HeatmapTier1" || whichTiers[i] == "HeatmapTier2" || whichTiers[i] == "Controls" ){
 							console.log("create tier")
 							// Will append html to the heatmap container
 							// type , dataKey , key , datasets , visualizationKey , metricSet , parentKey
-							thisObj.tiers.push ( tier.create( whichTiers[i], thisObj.dataKey , index , dataset , thisObj.visualizationKey , thisObj.metricSet , thisObj.key ) );
+							thisObj.tiers.push ( tier.create( whichTiers[i], thisObj.dataKey , index , dataset , thisObj.visualizationKey , thisObj.metricSet , thisObj.key , thisObj.mode ) );
 						}
 						
 						
@@ -745,9 +746,9 @@ var USG = USG || {};
 				createTier: function ( whichTier , dataset , mode ) {
 					var thisObj = this,
 					index = thisObj.tiers.length; // Represents the unique identifier of the new tier
-
+					console.log(mode)
 					// Ensure the type is accounted for
-					if( whichTier == "HeatmapTier1" || whichTier == "HeatmapTier2" || whichTier == "HeatmapTier3" || whichTier == "Parcoords"){
+					if( whichTier == "HeatmapTier1" || whichTier == "HeatmapTier2" || whichTier == "Controls" || whichTier == "Parcoords"){
 						// Will append html to the heatmap container
 						// type , dataKey , key , datasets , visualizationKey , metricSet , parentKey
 						thisObj.tiers.push ( tier.create( whichTier , thisObj.dataKey , index , dataset , thisObj.visualizationKey , thisObj.metricSet , thisObj.key , mode ) );
@@ -826,10 +827,15 @@ var USG = USG || {};
 					this.dataset = dataset;
 					this.metricSet = metricSet;
 
-					if( mode == "overview" ){
+					if( mode == "heatmap-overview" ){
 						this.mode = mode;
 						this.visualizationKey = "global";
 						
+					} else if ( mode == "parcoords" ) {
+
+						this.mode = mode;
+						this.visualizationKey = visualizationKey;
+
 					} else {
 						this.mode = "default";
 						this.visualizationKey = visualizationKey;
@@ -839,6 +845,7 @@ var USG = USG || {};
 
 					this.orderedMetrics = metricSet.orderCategories( dataKey , this.visualizationKey );
 					this.orderedMetricsList = metricSet.getOrderedMetrics( dataKey , this.visualizationKey );
+					this.orderedPairedMetricsList = metricSet.getOrderedPairedMetrics( dataKey , this.visualizationKey );
 
 					this.html = {
 						parentContainer: parentKey,
@@ -893,8 +900,6 @@ var USG = USG || {};
 							
 							thisObj.html.markup = data;
 							thisObj.html.id = thisObj.type + "-" + thisObj.html.parentContainer + "-" + thisObj.key;
-
-							console.log(thisObj.html.id);
 
 							deferred.resolve(); 
 
@@ -976,10 +981,9 @@ var USG = USG || {};
 						var currentMetricIndex = 0,
 							thisObj = this;
 							nonPermutedMetricCount = 0,
-							permutedFlag = false, 
 							gutterFlag = false;
 						
-						thisObj.countGutters();
+						// thisObj.countGutters();
 						this.gutterCount = 0;
 
 						thisObj.visibleColumnCount = 0;
@@ -1428,38 +1432,32 @@ var USG = USG || {};
 				Parcoords.prototype = Object.create( TierInstance.prototype, {
 					visualize: {
 						value: function ( ) {
-							var id = "#" + this.html.id,
-							data = this.dataset[0].getData();
-							var orderedMetricsList = this.orderedMetricsList;
-							console.log(data);
+							var thisObj = this;
 
-							var id = "#" + this.html.id,
-							height = $( "#vizualizations-holder" ).height(),
-							width = $( id ).width();
-
-							var parcoords = d3.parcoords({
-								// dimensions: orderedMetricsList,
-								data: data
+							thisObj.parcoords
 								
-								// height: height,
-								// width: width
-							})(id);
+								.width(thisObj.width)
+								.detectDimensions( )
+								.dimensions( thisObj.orderedMetricsList )
+								.height(thisObj.height)
+								.createAxes()
 
-							console.log(parcoords.state)
-
-							parcoords
-								
-								.width(width)
-								.detectDimensions()
-								.hideAxis(["originalPassword"])
-								.hideAxis(["permutedPassword"])
-								.height(height/2)
+								.bundlingStrength(.5) // set bundling strength
+								.smoothness(.2)
+								.bundleDimension(thisObj.orderedMetricsList[0])
+								.showControlPoints(false)
 								.render()
-								.createAxes().dimensions(orderedMetricsList)
+								
+								.reorderable()
+								.interactive()
 								.brushMode("1D-axes")
 								;
-
-							console.log(parcoords.state)
+							;
+							for(var i = 0; i < thisObj.orderedMetricsList.length; i++){
+								console.log(thisObj.orderedMetricsList[i])
+								thisObj.hideMultiColumn( thisObj.orderedMetricsList[i] );
+							}
+							thisObj.parcoords.updateAxes().bundleDimension(thisObj.orderedMetricsList[0]).render()
 						
 						},
 						enumerable: true,
@@ -1469,11 +1467,109 @@ var USG = USG || {};
 					createsvg: {
 						value: function () {
 
-							// var id = "#" + this.html.id,
-							// height = $( "#vizualizations-holder" ).height(),
-							// width = $( id ).width();
+							var id = "#" + this.html.id,
+							data = this.dataset[0].getData(),
+							thisObj = this;
+							var orderedMetricsList = this.orderedMetricsList;
 
-							// this.svg = new Svg(height, width, id, this.html.parentContainer);
+							var id = "#" + this.html.id;
+							thisObj.height = $( "#vizualizations-holder" ).height();
+							thisObj.width = $( id ).width();
+
+							thisObj.parcoords = d3.parcoords({
+
+								data: data,
+								metricSet: thisObj.metricSet,
+								dataKey: thisObj.dataKey,
+								visualizationKey: thisObj.visualizationKey,
+								orderedMetrics: orderedMetricsList,
+
+
+							})(id);
+
+							console.log(thisObj.parcoords.state)
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					// Add data to the visualization
+					addData: {
+						value: function () {
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					// Change which data is being viewed
+					viewData: {
+						value: function () {
+							
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					hideColumns: {
+						value: function ( metricName ) {
+							var thisObj = this;
+
+							var visible = thisObj.metricSet.isVisible( metricName , thisObj.dataKey , thisObj.visualizationKey );
+							
+							if( visible ){ 
+								thisObj.parcoords.showAxis( metricName ).updateAxes().bundleDimension( "lpd" ).render(); 	
+							} else {
+								thisObj.parcoords.hideAxis( metricName ).updateAxes().bundleDimension( "lpd" ).render();
+							}
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					hideMultiColumn: {
+						value: function ( metricName ) {
+							var thisObj = this;
+
+							var visible = thisObj.metricSet.isVisible( metricName , thisObj.dataKey , thisObj.visualizationKey );
+							
+							if( visible ){ 
+								thisObj.parcoords.showAxis( metricName ); 	
+							} else {
+								thisObj.parcoords.hideAxis( metricName );
+							}
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					bundleBy : {
+						value: function ( metricName ) {
+
+							this.parcoords.bundleDimension( metricName ).render(); 
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					updateSmoothness : {
+						value: function ( value ) {
+
+							this.parcoords.smoothness( value ).render(); 
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					updateBundling : {
+						value: function ( value ) {
+
+							this.parcoords.bundlingStrength( value ).render(); 
 
 						},
 						enumerable: true,
@@ -1544,15 +1640,12 @@ var USG = USG || {};
 					},
 					createsvg: {
 						value: function () {
-							console.log(this.html.id)
 
 							var id = "#" + this.html.id,
 							height = $( "#vizualizations-holder" ).height(),
 							width = $( id ).width();
-							console.log(width);
-							console.log($("#tier1-heatmap-overview-2").width());
 
-							if(this.mode == "overview"){
+							if(this.mode == "heatmap-overview"){
 								$(id).append('<button class="btn btn-default navbar-btn btn-sm overview-view-btn" id="' + this.dataset.getName() + '" type="submit" ><span class="glyphicon glyphicon-eye-open" aria-hidden="true" ></span></button>');
 
 								var buttonHeight = $(".overview-view-btn").outerHeight();
@@ -1899,7 +1992,7 @@ var USG = USG || {};
 
 
 				//// Close up view  
-				var HeatmapTier3 = function (type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode) {
+				var Controls = function (type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode) {
 					TierInstance.call( this , type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode);
 
 					// Size and margin information for grid
@@ -1918,14 +2011,15 @@ var USG = USG || {};
 					this.datasetIndex = 0;
 					
 				};
-				HeatmapTier3.prototype = Object.create( TierInstance.prototype, {
+				Controls.prototype = Object.create( TierInstance.prototype, {
 					visualize: {
 						value: function ( ) {
-
-							this.drawLabels();
-							this.drawBlocks();
+							if( this.mode != "parcoords" ){
+								this.drawLabels();
+								this.drawBlocks();
+							}
+							
 							this.initializeControls();
-
 						},
 						enumerable: true,
 					    configurable: true, 
@@ -1941,7 +2035,6 @@ var USG = USG || {};
 							this.svg = new Svg( height, width, id, this.html.parentContainer )
 
 							this.grid.margin.left = this.svg.dimensions.width - (this.grid.size.width * 10) + 5;
-
 						},
 						enumerable: true,
 					    configurable: true, 
@@ -1949,15 +2042,127 @@ var USG = USG || {};
 					}, 
 					initializeControls: {
 						value: function () {
+							this.createPanels();
+							this.refreshControls();
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					refreshControls: {
+						value: function () {
+							var parent = "#" + thisObj.parentKey;
+
+							// Clear panels if they exist
+							$( parent + ' .filter-holder').html('');
+							$( parent + ' .rank-holder').html('');
+							$( parent + ' #bundleBy-menu').html('');
+							$( parent + ' .hide-columns-holder' ).html('');
+
+							this.draw( this.addControls );
+							this.createEventHandlers();
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					addControls: {
+						value: function( thisObj , gutterCount , metricIndex , metricName, currentMetricIndex , categoryIndex , nonPermutedMetricCount , selector , x ) {
+
+							var metricObj = thisObj.metricSet.metrics[metricName],
+								categoryName = thisObj.orderedMetrics[categoryIndex].name
+								metricLabel = metricObj.label,
+								parent = "#" + thisObj.parentKey;
+								
+							if( thisObj.mode == "heatmap" ){
+								if( metricIndex == 0 ){
+									// Filter: Append category title
+									$( parent + ' .filter-holder').append('<h4>' + categoryName + '</h4>');
+
+									// Rank by: Append category title 
+									$( parent + ' .rank-holder').append('<br><h4 class="rank-category-label" >' + categoryName + '</h4>');
+								}
+								
+								thisObj.addFilterSliders( metricName , thisObj );
+
+								thisObj.addRankByButton( metricName , thisObj );
+
+							} else if ( thisObj.mode == "parcoords" ) {
+
+								thisObj.addBundleByControl( metricName , thisObj );
+
+							} 
+
+							if( metricIndex == 0 ){
+								// Show/hide: Append category title
+								$( parent + ' .hide-columns-holder').append('<br><h4 class="hide-columns-label" >' + categoryName + '</h4>');
+							}
+
+							thisObj.addShowHideControl( metricName , thisObj );
+						},
+						enumerable: true,
+						configurable: true, 
+						writable: true
+					},
+					addData: {
+						value: function() {
+							this.refreshControls();
+						},
+						enumerable: true,
+						configurable: true, 
+						writable: true
+					},
+					createPanels: {
+						value: function( thisObj ) {
+							var thisObj = this,
+								parent = "#" + thisObj.parentKey;
+							
+							thisObj.createAboutPanel(); // Append panels
+
+							if( this.mode != "parcoords" ){
+								thisObj.createFilterRankPanels();
+							} else if ( this.mode == "parcoords" ) {
+								thisObj.createAppearancePanels();
+							}
+								
+							thisObj.createShowHidePanel();
+						},
+						enumerable: true,
+						configurable: true, 
+						writable: true
+					},
+					createEventHandlers: {
+						value: function( thisObj ) {
+							var thisObj = this,
+								parent = "#" + thisObj.parentKey;
+							
+							$(parent + " .sortBtn").click(function(){ // Rank by
+							    var id = $(this).children().attr("id");
+							    $( parent + ' .display-btn').addClass('active');
+							    thisObj.sortPasswords( id );
+							});
+
+							$( parent + " .hide-column-btn").click(function(){ // Show/hide columns
+								var id = $(this).attr("id");
+								id = id.replace("-hide-column", "");
+								thisObj.triggerHideColumns( id );
+							});
+						},
+						enumerable: true,
+						configurable: true, 
+						writable: true
+					},
+					createAboutPanel: {
+						value: function() {
 							var thisObj = this;
 							var parent = "#" + thisObj.parentKey;
-							
+
 							// About this dataset panel
-							$( parent + ' .heatmap-tier3-filedata' ).append('<div class="panel-group heatmap-tier3-filedata" id="accordion"><div class="panel panel-default"><div class="panel-heading"><h4 class="panel-title"><a data-toggle="collapse" data-parent="" class="about-dataset-' + thisObj.parentKey + '" href="#about-dataset-' + thisObj.parentKey + '"></a></h4></div><div id="about-dataset-' + thisObj.parentKey + '" class="panel-collapse collapse in"><div class="panel-body"><table class="table table-hover about-dataset-holder"></table></div></div></div></div>');
+							$( parent + ' .controls-filedata' ).append('<div class="panel-group controls-filedata" id="accordion"><div class="panel panel-default"><div class="panel-heading"><h4 class="panel-title"><a data-toggle="collapse" data-parent="" class="about-dataset-' + thisObj.parentKey + '" href="#about-dataset-' + thisObj.parentKey + '"></a></h4></div><div id="about-dataset-' + thisObj.parentKey + '" class="panel-collapse collapse in"><div class="panel-body"><table class="table table-hover about-dataset-holder"></table></div></div></div></div>');
 
 							var classname = '.about-dataset-' + thisObj.parentKey;
-							
-							if( thisObj.mode !== "overview" ) {
+
+							if( thisObj.mode == "default") {
 								var dataset = thisObj.dataset.getData();
 								
 								$( classname ).html('About this dataset');
@@ -1973,167 +2178,201 @@ var USG = USG || {};
 								$( classname ).html('About dataset(s)');
 
 							}
-							
-
-							// Append panels
-								
-								// Filter
-							$( parent + ' .heatmap-tier3-controls' ).prepend('<div class="panel panel-default" data-toggle="tooltip" title="Click and drag the sliders left and right to filter rows of passwords based on their metric value." data-placement="top"><div class="panel-heading"><h4 class="panel-title"><a data-toggle="collapse" data-parent="" href="#filter-dataset-' + thisObj.parentKey + '" > Filter </a></h4></div><div id="filter-dataset-' + thisObj.parentKey + '" class="panel-collapse collapse"><div class="panel-body"><div class="container-fluid filter-holder" ></div></div></div></div>');
-
-								// Rank
-							$( parent + ' .heatmap-tier3-controls' ).prepend('<div class="panel panel-default" data-toggle="tooltip" title="Click any metric name to rank rows of passwords by that metric" data-placement="top"><div class="panel-heading"><h4 class="panel-title"><a data-toggle="collapse" data-parent="" href="#rank-dataset-' + thisObj.parentKey + '">Rank by</a></h4></div><div id="rank-dataset-' + thisObj.parentKey + '" class="panel-collapse collapse"><div class="panel-body"><div class="btn-group rank-holder" data-toggle="buttons"></div></div></div></div>');
-
-								// Show / hide columns
-							$( parent + ' .heatmap-tier3-controls' ).prepend('<div class="panel panel-default" data-toggle="tooltip" title="Click any metric name to hide that metric column" data-placement="top"><div class="panel-heading"><h4 class="panel-title"><a data-toggle="collapse" data-parent="" href="#show-dataset-' + thisObj.parentKey + '"> Show/Hide Columns </a></h4></div><div id="show-dataset-' + thisObj.parentKey + '" class="panel-collapse collapse"><div class="panel-body"><div class="button-group hide-columns-holder display-input-holder" data-toggle="buttons"></div></div></div></div></div>');
-
-							$( parent + ' .heatmap-tier3-controls' ).prepend('<h3>Controls</h3>');
-
-							
-
-							// Filter, Rank, Show/hide columns 
-							for(var prop in thisObj.metricSet.categories){
-								
-								// If there is at least one metric in this category with a non-string data type
-								if( thisObj.metricSet.categories[prop].metricOrder.length != 0 && !thisObj.metricSet.categories[prop].allString){ 
-
-									// Filter: Append category title
-									$( parent + ' .filter-holder').append('<h4>' + prop + '</h4>');
-
-									// Rank by: Append category title 
-									$( parent + ' .rank-holder').append('<br><h4 class="rank-category-label" >' + prop + '</h4>');
-
-									// Show/hide columns 
-									$( parent + ' .hide-columns-holder').append('<br><h4 class="hide-columns-label" >' + prop + '</h4>');
-
-									// Add each metric in category
-									for( var i = 0; i < thisObj.metricSet.categories[prop].metricOrder.length; i++  ){
-
-										var metricName = thisObj.metricSet.categories[prop].metricOrder[i],
-										metricObj = thisObj.metricSet.metrics[metricName],
-										metricLabel = metricObj.label,
-										sliderlabelid =  metricName + '-sliderRange'
-										sliderid = metricName;
-
-										// If the metric has a domain, add to GUI
-										if(metricObj.domainVal) {
-											// Filter 
-											var html = '<div class="row">';
-											
-											html += '<div class="col-sm-12"><h5>' +  metricLabel + ':  <span id="' + sliderlabelid + '" ></h5></div>';
-											
-											html += '<div class="col-sm-12"><div id="' + sliderid + '" style="" class="slider"></div></div>';
-
-											html += '</div>';
-
-											$( parent + ' .filter-holder').append(html);
-											html = '';
-
-											// Retrieve min and max of metric domain
-											if(thisObj.mode == "overview"){
-												var min = Math.round(metricObj.domainVal["global"].min * 100)/100,
-												max = Math.round(metricObj.domainVal["global"].max * 100)/100;
-											} else {
-												var min = Math.round(metricObj.domainVal[thisObj.dataKey].min * 100)/100,
-												max = Math.round(metricObj.domainVal[thisObj.dataKey].max * 100)/100;
-											}
-											
-											var id = "#"+sliderlabelid;
-
-											$( parent + " " + id).append( min + " - " + max);
-
-											id = parent + " " + '#' + sliderid;
-
-											 // Filter: Activate sliders
-											$(id).empty().slider({
-												orientation: "horizontal",
-												range: true,
-												min: min,
-												max: max,
-												values: [min,max],
-												slide: function( event, ui ) {
-													
-													var metricName = $(event.target).attr("id");
-													
-													thisObj.filterPasswords( metricName, ui.values );
-													var labelID = "#" + metricName + "-sliderRange";
-													$( parent + " " + labelID).html(ui.values[0] + " - " + ui.values[1]);
-
-												}
-											});
-
-											// Rank by 
-											$( parent + ' .rank-holder').append('<label class="sortBtn btn btn-xs btn-default btn-block"><input type="radio" name="options" id="' + metricName + '">' + metricLabel + '</label>');
-
-
-											// Show only columns visible in the grid ( gridmetricSet )
-											if( thisObj.metricSet.isString(metricName) != "String" ){
-												// Show/hide Columns
-												var activeVal = "";
-												if( thisObj.metricSet.isVisible( metricName , thisObj.dataKey , thisObj.visualizationKey ) ){
-													activeVal = "active";
-												}
-												$( parent + ' .hide-columns-holder' ).append( '<label class="btn btn-xs btn-block btn-default ' + activeVal + ' hide-column-btn" id="' + metricName + '-hide-column" style="margin:2px;"><input type="checkbox">' + metricLabel + '</label>' );
-											}
-											
-										}
-
-									}
-
-									// Filter: add space after category
-									$( parent + ' .filter-holder').append('<div class="row"><hr></div>');
-									$( parent + ' .rank-holder').append('<br><hr>');
-
-									// // Hide columns: add "Hide All" button
-									// $('.hide-columns-holder').append('<br><label class="btn btn-xs btn-block btn-default active hide-column-btn" id="' + prop + '-hide-column" style="margin:2px;"><input type="checkbox"> Hide All </label>');
-							
-							}
-							
-						}
-
-							html += '</div>';
-
-							$( parent + ' .filter-holder').append(html);
-
-							for(var prop in thisObj.metricSet.categories){
-								if( thisObj.metricSet.categories[prop].metricOrder.length != 0 && !thisObj.metricSet.categories[prop].allString){
-
-									for( var i = 0; i < thisObj.metricSet.categories[prop].metricOrder.length; i++  ){
-										var metricName = thisObj.metricSet.categories[prop].metricOrder[i],
-										metricObj = thisObj.metricSet.metrics[metricName];
-										
-									}
-								}
-							}
-
-							// Rank by
-							// Add event handler for sorting data
-							$(parent + " .sortBtn").click(function(){
-
-							    var id = $(this).children().attr("id");
-							    $( parent + ' .display-btn').addClass('active');
-
-							    thisObj.sortPasswords( id );
-
-							});
-
-							// Show/hide columns
-							$( parent + " .hide-column-btn").click(function(){
-								var id = $(this).attr("id");
-								id = id.replace("-hide-column", "");
-								
-								thisObj.triggerHideColumns( id );
-							});
-
 						},
 						enumerable: true,
 					    configurable: true, 
 					    writable: true
+					},
+					createFilterRankPanels: {
+						value: function( thisObj ) {
+							var thisObj = this;
+							var parent = "#" + thisObj.parentKey; 
+							
+							// Filter
+							$( parent + ' .controls-controls' ).prepend('<div class="panel panel-default" data-toggle="tooltip" title="Click and drag the sliders left and right to filter rows of passwords based on their metric value." data-placement="top"><div class="panel-heading"><h4 class="panel-title"><a data-toggle="collapse" data-parent="" href="#filter-dataset-' + thisObj.parentKey + '" > Filter </a></h4></div><div id="filter-dataset-' + thisObj.parentKey + '" class="panel-collapse collapse"><div class="panel-body"><div class="container-fluid filter-holder" ></div></div></div></div>');
+
+							// Rank
+							$( parent + ' .controls-controls' ).prepend('<div class="panel panel-default" data-toggle="tooltip" title="Click any metric name to rank rows of passwords by that metric" data-placement="top"><div class="panel-heading"><h4 class="panel-title"><a data-toggle="collapse" data-parent="" href="#rank-dataset-' + thisObj.parentKey + '">Rank by</a></h4></div><div id="rank-dataset-' + thisObj.parentKey + '" class="panel-collapse collapse"><div class="panel-body"><div class="btn-group rank-holder" data-toggle="buttons"></div></div></div></div>');
+						},
+						enumerable: true,
+						configurable: true, 
+						writable: true
+					},
+					createAppearancePanels: {
+						value: function() {
+							var thisObj = this;
+							var parent = "#" + thisObj.parentKey; 
+							
+							//Bundling and Smoothness controls
+							$( parent + ' .controls-controls' ).prepend('<div class="panel panel-default" data-toggle="tooltip" title="Click and drag the sliders left and right to adjust bundling and smoothness of lines." data-placement="top"><div class="panel-heading"><h4 class="panel-title"><a data-toggle="collapse" data-parent="" href="#bundling-dataset-' + thisObj.parentKey + '" > Appearance </a></h4></div><div id="bundling-dataset-' + thisObj.parentKey + '" class="panel-collapse collapse"><div class="panel-body"><div class="container-fluid bundling-holder" ></div></div></div></div>');
+
+							$( parent + ' .bundling-holder').append('<h5>Smoothness <span id="smoothness-value">0.2</span></h5><div id="smoothness"></div><br>');
+							$( parent + ' .bundling-holder').append('<h5>Bundling <span id="bundling-value">0.5</span></h5><div id="bundling"></div><br>');
+
+							// Bundling/smoothness: Activate sliders
+							$(parent + " #smoothness").empty().slider({
+								orientation: "horizontal",
+								value: 0.2,
+								min: 0,
+								max: 0.25,
+								step: 0.01,
+								range: "min",
+								animate: true,
+								slide: function( event, ui ) {
+									thisObj.updateSmoothness( ui.value );
+									var labelID = "#smoothness-value";
+									$( parent + " " + labelID).html(ui.value);
+								}
+							});
+							// Bundling/smoothness: Activate sliders
+							$(parent + " #bundling").empty().slider({
+								orientation: "horizontal",
+								value: 0.5,
+								min: 0,
+								max: 1,
+								step: 0.05,
+								range: "min",
+								animate: true,
+								slide: function( event, ui ) {
+									thisObj.updateBundling( ui.value );
+									var labelID = "#bundling-value";
+									$( parent + " " + labelID).html(ui.value);
+								}
+							});
+
+							// Bundle by 
+							$( parent + ' .bundling-holder').append('<h5>Bundle by</h5><div class="btn-group-vertical navbar-btn" id="bundleBy-menu" role="group" aria-label="..."></div>');
+						},
+						enumerable: true,
+						configurable: true, 
+						writable: true
+					},
+					createShowHidePanel: {
+						value: function( thisObj ) {
+							var thisObj = this;
+							var parent = "#" + thisObj.parentKey; 
+							
+							// Show / hide columns
+							$( parent + ' .controls-controls' ).prepend('<div class="panel panel-default" data-toggle="tooltip" title="Click any metric name to hide that metric column" data-placement="top"><div class="panel-heading"><h4 class="panel-title"><a data-toggle="collapse" data-parent="" href="#show-dataset-' + thisObj.parentKey + '"> Show/Hide Columns </a></h4></div><div id="show-dataset-' + thisObj.parentKey + '" class="panel-collapse collapse"><div class="panel-body"><div class="button-group hide-columns-holder showHide-input-holder" data-toggle="buttons"></div></div></div></div></div>');
+
+							$( parent + ' .controls-controls' ).prepend('<h3>Controls</h3>');
+
+						},
+						enumerable: true,
+						configurable: true, 
+						writable: true
+					},
+					addFilterSliders: {
+						value: function( metricName, thisObj ) {
+							var thisObj = this,
+								parent = "#" + thisObj.parentKey,
+								metricObj = thisObj.metricSet.metrics[metricName],
+								metricLabel = metricObj.label,
+								sliderlabelid =  metricName + '-sliderRange'
+								sliderid = metricName;;
+
+							// Filter 
+							var html = '<div class="row"><div class="col-sm-12"><h5>' +  metricLabel + ':  <span id="' + sliderlabelid + '" ></h5></div><div class="col-sm-12"><div id="' + sliderid + '" style="" class="slider"></div></div></div>';
+
+							$( parent + ' .filter-holder').append(html);
+
+							// Retrieve min and max of metric domain
+							if(thisObj.mode == "heatmap-overview"){
+								var min = Math.round(metricObj.domainVal["global"].min * 100)/100,
+								max = Math.round(metricObj.domainVal["global"].max * 100)/100;
+							} else {
+								var min = Math.round(metricObj.domainVal[thisObj.dataKey].min * 100)/100,
+								max = Math.round(metricObj.domainVal[thisObj.dataKey].max * 100)/100;
+							}
+							
+							var id = "#"+sliderlabelid;
+
+							$( parent + " " + id).append( min + " - " + max);
+
+							id = parent + " " + '#' + sliderid;
+
+							 // Filter: Activate sliders
+							$(id).empty().slider({
+								orientation: "horizontal",
+								range: true,
+								min: min,
+								max: max,
+								values: [min,max],
+								animate: true,
+								slide: function( event, ui ) {
+									
+									var metricName = $(event.target).attr("id");
+									
+									thisObj.filterPasswords( metricName, ui.values );
+									var labelID = "#" + metricName + "-sliderRange";
+									$( parent + " " + labelID).html(ui.values[0] + " - " + ui.values[1]);
+
+								}
+							});
+
+						},
+						enumerable: true,
+						configurable: true, 
+						writable: true
+					},
+					addRankByButton: {
+						value: function( metricName, thisObj ) {
+							var parent = "#" + thisObj.parentKey,
+								metricLabel = metricObj.label;
+
+							// Rank by 
+							$( parent + ' .rank-holder').append('<label class="sortBtn btn btn-xs btn-default btn-block"><input type="radio" name="options" id="' + metricName + '">' + metricLabel + '</label>');
+
+						},
+						enumerable: true,
+						configurable: true, 
+						writable: true
+					},
+					addBundleByControl: {
+						value: function( metricName, thisObj ) {
+							var parent = "#" + thisObj.parentKey,
+								metricObj = thisObj.metricSet.metrics[metricName],
+								metricLabel = metricObj.label;
+
+							// Bundle by
+							$( parent + ' #bundleBy-menu').append('<button class="btn btn-default btn-sm" href="#" role="button" data="' + metricName + '" id="view-' + metricName + '" href="view-' + metricName + '">' + thisObj.metricSet.metrics[metricName].label + '</button>')
+
+							var name = "#view-" + metricName;
+							$( name ).on("click", function(e){
+								e.preventDefault();
+								var metricName = $(e.target).attr("data");
+								thisObj.bundleBy( metricName );
+							});
+
+						},
+						enumerable: true,
+						configurable: true, 
+						writable: true
+					},
+					addShowHideControl: {
+						value: function( metricName , thisObj ) {
+							var parent = "#" + thisObj.parentKey,
+								metricObj = thisObj.metricSet.metrics[metricName],
+								metricLabel = metricObj.label;
+
+								var activeVal = "";
+								if( thisObj.metricSet.isVisible( metricName , thisObj.dataKey , thisObj.visualizationKey ) ) activeVal = "active";
+								$( parent + ' .hide-columns-holder' ).append( '<label class="btn btn-xs btn-block btn-default ' + activeVal + ' hide-column-btn" id="' + metricName + '-hide-column" style="margin:0px;"><input type="checkbox">' + metricLabel + '</label>' );
+
+						},
+						enumerable: true,
+						configurable: true, 
+						writable: true
 					},
 					drawLabels: {
 						value: function () {
 							var thisObj = this;
 							var svg = thisObj.svg.obj;
 							var x = thisObj.grid.margin.left;
+							var parent = "#" + thisObj.parentKey;
+
+							$( parent + "#Controls-svg-container").append('<h3>Breakdown</h3>');
+
 							// Create labels for columns
 							// Each category has <g> 
 							var breakdownLabel = svg.selectAll(".breakdownLabel")
@@ -2350,21 +2589,17 @@ var USG = USG || {};
 					},
 					hover: {
 						value: function ( metricName , type , selector , row , datasetIndex ) {
-
 							this.datasetIndex = datasetIndex;
-
 							if( row ){
 								this.draw( this.populateValues , row );
 								this.draw( this.colorBlocks , row );
 
 								this.boldLabels( metricName , type );
 							
-								if ( thisObj.mode == "overview" ) {
+								if ( thisObj.mode == "heatmap-overview" ) {
 									$().html();
 								} 
 							}
-							
-
 						},
 						enumerable: true,
 					    configurable: true, 
@@ -2375,13 +2610,12 @@ var USG = USG || {};
 							
 							var svg = thisObj.svg.obj;
 
-							if ( thisObj.mode == "overview" ) {
+							if ( thisObj.mode == "heatmap-overview" ) {
 								var dataset = thisObj.dataset[thisObj.datasetIndex].getData();
 							} else {
 								var dataset = thisObj.dataset.getData();
 							}
 
-							
 							var data = dataset[selector];
 							
 							var rowClass = ".breakdown-holder-" + metricName ;
@@ -2395,7 +2629,6 @@ var USG = USG || {};
 
 							password = svg.selectAll(".permuted");
 							password.text( function( ){ return data[ "permutedPassword" ]; } );
-
 						},
 						enumerable: true,
 					    configurable: true, 
@@ -2414,7 +2647,6 @@ var USG = USG || {};
 							var labelObj = svg.selectAll(labelClass);
 
 							if( type == "mouseover" ) {
-
 								svgObj.attr("font-weight" , "900").style("fill", "#F00");
 								var text = labelObj.text();
 								labelObj.text(" ");
@@ -2422,7 +2654,6 @@ var USG = USG || {};
 								labelObj.text(function(){
 									return " ☞ " + text;
 								});
-
 							} else {
 								svgObj.attr("font-weight" , "lighter").style("fill", "#000");;
 								
@@ -2434,11 +2665,7 @@ var USG = USG || {};
 								labelObj.text(function(){
 									return text;
 								});
-
 							}
-
-
-
 						},
 						enumerable: true,
 					    configurable: true, 
@@ -2446,10 +2673,9 @@ var USG = USG || {};
 					},
 					colorBlocks: {
 						value: function ( thisObj , gutterCount , metricIndex , metricName, currentMetricIndex , categoryIndex , nonPermutedMetricCount , selector , x ) {
-							
 							var svg = thisObj.svg.obj;
 
-							if ( thisObj.mode == "overview" ) {
+							if ( thisObj.mode == "heatmap-overview" ) {
 								var dataset = thisObj.dataset[thisObj.datasetIndex].getData();
 								var dataKey = thisObj.dataset[thisObj.datasetIndex].getName();
 							} else {
@@ -2470,22 +2696,18 @@ var USG = USG || {};
 							rowClass = "." + metricName ;
 							rowObj = svg.selectAll(rowClass);
 							rowObj.attr()
-
 						},
 						enumerable: true,
 					    configurable: true, 
 					    writable: true
 					},
+					// Color blocks for connected tiers
 					filterPasswords: {
 						value: function ( metricName, values ) {
-							var thisObj = this;
-
-							// Color blocks for connected tiers
-						    for(var i = 0; i < thisObj.connectedTiers.length; i++){
-						    	if( thisObj.connectedTiers[i].filterPasswords ) {
-						    		thisObj.connectedTiers[i].filterPasswords( metricName, values );
+						    for(var i = 0; i < this.connectedTiers.length; i++){
+						    	if( this.connectedTiers[i].filterPasswords ) {
+						    		this.connectedTiers[i].filterPasswords( metricName, values );
 						    	}
-
 						    }
 						},
 						enumerable: true,
@@ -2494,28 +2716,20 @@ var USG = USG || {};
 					},
 					sortPasswords: {
 						value: function ( metricName ) {
-
-							if(this.mode == "overview"){
-								console.log("Overview sort by " + metricName);
+							if(this.mode == "heatmap-overview"){
 								for(var i = 0; i < (this.dataset.length); i++){
-
 									this.dataset[i].sortData( metricName );
-
 								}
-
 							} else {
-								console.log("Sort by " + metricName);
 								this.dataset.sortData( metricName );
 							}
 									
-
 							// Color blocks for connected tiers
 						    for(var i = 0; i < this.connectedTiers.length; i++){
 						    	if( this.connectedTiers[i].visualize ) {
 						    		this.connectedTiers[i].visualize();
 						    		console.log("visualize " + i);
 						    	}
-
 						    }
 							
 						},
@@ -2565,26 +2779,72 @@ var USG = USG || {};
 						enumerable: true,
 					    configurable: true, 
 					    writable: true
+					},
+					updateSmoothness: {
+						value: function ( value ) {
+
+							// Color blocks for connected tiers
+						    for(var i = 0; i < this.connectedTiers.length; i++){
+						    	if( this.connectedTiers[i].updateSmoothness ) {
+						    		this.connectedTiers[i].updateSmoothness( value );
+						    	}
+
+						    }
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					updateBundling: {
+						value: function ( value ) {
+
+							// Color blocks for connected tiers
+						    for(var i = 0; i < this.connectedTiers.length; i++){
+						    	if( this.connectedTiers[i].updateBundling ) {
+						    		this.connectedTiers[i].updateBundling( value );
+						    	}
+
+						    }
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					bundleBy: {
+						value: function ( metricName ) {
+
+							// Color blocks for connected tiers
+						    for(var i = 0; i < this.connectedTiers.length; i++){
+						    	if( this.connectedTiers[i].bundleBy ) {
+						    		this.connectedTiers[i].bundleBy( metricName );
+						    	}
+
+						    }
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
 					}
+
 				} ); 
-				HeatmapTier3.prototype.constructor = HeatmapTier3;
+				Controls.prototype.constructor = Controls;
 
 				var types = {
 					"HeatmapTier1": HeatmapTier1,	 
 					"HeatmapTier2": HeatmapTier2, 
-					"HeatmapTier3": HeatmapTier3,
+					"Controls": Controls,
 					"Parcoords": Parcoords 
 				};
 
 
 				/* Public Methods */
 				var create = function( type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode ){
-					console.log(types[type]);
 					if( types[type] ){
 
-						var tier = types[type];
-						console.log("TIER")
-						
+						var tier = types[type];						
 
 						if( mode ) {
 							return new tier(type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode );
@@ -2632,6 +2892,9 @@ var USG = USG || {};
 				this.metricList = [];
 				this.categories = [];
 
+				this.orderedMetricsList; // All metrics in symmetrical order
+				this.orderedPairedMetricsList; // All metrics with pairs in symmetrical order
+				this.singleMetricsList; // All singleton metrics ( not ordered )
 				this.count = {};
 
 				var init = function (thisObj) {
@@ -2732,6 +2995,11 @@ var USG = USG || {};
 					return false;
 					
 				},
+				getExtent: function ( key , visualizationKey , type  ){
+					
+					return this.metrics[ type ].getDomain( key , visualizationKey );
+
+				},
 				getCount: function ( key , visualizationKey, type ) {
 					if( visualizationKey == "global" ) {
 
@@ -2797,12 +3065,23 @@ var USG = USG || {};
 					this.orderCategories( key , visualizationKey );
 					return this.orderedMetricsList;
 				},
+				getOrderedPairedMetrics: function ( key , visualizationKey ) {
+
+					this.orderCategories( key , visualizationKey );
+					return this.orderedPairedMetricsList;
+				},
+				getSingleMetrics: function ( key , visualizationKey ) {
+					this.orderCategories( key , visualizationKey );
+					return this.singleMetricsList;
+				},
 				orderCategories: function ( key , visualizationKey ) {
 					
 					var categoryArray = []; // Used for sorting categories by size
 					var categoriesToBeAdded = []; // Holds categories that don't have permuted pairs
 					this.orderedCategories = []; // Ordered metric array
 					this.orderedMetricsList = [];
+					this.orderedPairedMetricsList = [];
+					this.singleMetricsList = [];
 
 					if( !this.count[key] ){
 
@@ -2845,6 +3124,7 @@ var USG = USG || {};
 
 									metricArray.push( obj.metricsOriginal[ j ] );
 									this.orderedMetricsList.push( obj.metricsOriginal[ j ] );
+									this.orderedPairedMetricsList.push( obj.metricsOriginal[ j ] );
 
 									totalCount++;
 
@@ -2879,6 +3159,7 @@ var USG = USG || {};
 									
 									metricArray.push( obj.metricOrder[ j ] );
 									this.orderedMetricsList.push( obj.metricOrder[ j ] );
+									this.singleMetricsList.push( obj.metricOrder[ j ] );
 
 									totalCount++;
 
@@ -2909,6 +3190,7 @@ var USG = USG || {};
 
 									metricArray.push( obj.metricsPermuted[ j ] );
 									this.orderedMetricsList.push( obj.metricsPermuted[ j ] );
+									this.orderedPairedMetricsList.push( obj.metricsPermuted[ j ] );
 
 									totalCount++;
 
@@ -2959,11 +3241,11 @@ var USG = USG || {};
 					}
 
 				},
-				setColorScheme: function ( dataKey, heatmapKey , colorscheme ) {
+				setColorScheme: function ( dataKey, visualizationKey , colorscheme ) {
 					
 					for( var prop in this.metrics ){	
 
-						this.metrics[ prop ].setColorScheme( dataKey , heatmapKey , colorscheme );
+						this.metrics[ prop ].setColorScheme( dataKey , visualizationKey , colorscheme );
 
 					}
 
@@ -3202,9 +3484,11 @@ var USG = USG || {};
 									var pairMax = d3.max( dataset , function (d) { return d[ pairName ]; });
 								}
 
-								newDataMin = d3.max([ pairMax , newDataMin ]);
+								newDataMax = d3.max([ pairMax , newDataMax ]);
 
 							}
+
+							thisObj.domainVal[ dataLocation ].max = newDataMax;
 
 							// Compare with existing global maximum and store result
 							this.domainVal.global.max = d3.max([ newDataMax, thisObj.domainVal.global.max]);
@@ -3226,9 +3510,24 @@ var USG = USG || {};
 
 					}
 				},
+				getDomain:function ( key , visualizationKey ) {
+					var thisObj = this;
+					if( visualizationKey == "global" ){
+
+						var min =  thisObj.domainVal.global.min;
+						var max =  thisObj.domainVal.global.max;
+					
+					} else {
+
+						var min =  thisObj.domainVal[ key ].min;
+						var max =  thisObj.domainVal[ key ].max;
+
+					}
+
+					return [min, max];
+				},
 				setColorScheme: function ( key , visualizationKey , colorscheme ) { 
 					var thisObj = this;
-
 					if ( thisObj.domainType ) {	
 						if( visualizationKey == "global" ){
 							var min =  thisObj.domainVal.global.min;
@@ -3236,15 +3535,15 @@ var USG = USG || {};
 						
 		 					var domain = [min, max];
 		
-							if( !this.colorScale[ visualizationKey ] ){
-								this.colorScale[ visualizationKey ] = {};
+							if( !this.colorScale[ "global" ] ){
+								this.colorScale[ "global" ] = {};
 							}
 
-							this.colorScale[ visualizationKey ].normal = d3.scale.quantile()
+							this.colorScale[ "global" ].normal = d3.scale.quantile()
 								.domain(domain)
 								.range(colorscheme.normal);
 
-							this.colorScale[ visualizationKey ].highlight = d3.scale.quantile()
+							this.colorScale[ "global" ].highlight = d3.scale.quantile()
 								.domain(domain)
 								.range(colorscheme.highlight);
 
@@ -3275,7 +3574,7 @@ var USG = USG || {};
 				},
 				getNormalColorScale: function ( key , visualizationKey ) {
 					if( visualizationKey == "global" ){
-						return this.colorScale[ visualizationKey ].normal;
+						return this.colorScale[ "global" ].normal;
 					} else {
 						return this.colorScale[ key ][ visualizationKey ].normal;
 					}
@@ -3283,7 +3582,7 @@ var USG = USG || {};
 				},
 				getHighlightColorScale: function ( key , visualizationKey ) {
 					if( visualizationKey == "global" ){
-						return this.colorScale[ visualizationKey ].highlight;
+						return this.colorScale[ "global" ].highlight;
 					} else {
 						return this.colorScale[ key ][ visualizationKey ].highlight;
 					}

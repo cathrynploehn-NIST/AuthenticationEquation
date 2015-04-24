@@ -4,25 +4,32 @@ d3.parcoords = function(config) {
     highlighted: [],
     dimensions: [],
     dimensionTitles: {},
-    dimensionTitleRotation: 0,
+    dimensionTitleRotation: -70,
     types: {},
     brushed: false,
-    mode: "default",
+    mode: "queue",
     rate: 20,
     width: 600,
     height: 300,
-    margin: { top: 24, right: 0, bottom: 12, left: 0 },
+    margin: { top: 200, right: 30, bottom: 50, left: 0 },
     color: "#069",
     composite: "source-over",
-    alpha: 0.7,
+    alpha: 0.2,
     bundlingStrength: 0.5,
     bundleDimension: null,
     smoothness: 0.25,
     showControlPoints: false,
-    hideAxis : []
+    hideAxis : [],
+    showAxis : [],
+
+    metricSet: {},
+    hiddenRows: [],
+    orderedMetrics: []
   };
 
   extend(__, config);
+
+
 var pc = function(selection) {
   selection = pc.selection = d3.select(selection);
 
@@ -97,11 +104,20 @@ var side_effects = d3.dispatch.apply(this,d3.keys(__))
 	  }
 
 	  __.clusterCentroids = compute_cluster_centroids(__.bundleDimension);
+  }).on("showAxis", function(d) {
+
+    if (!__.dimensions.length) pc.detectDimensions();
+    pc.dimensions(show(__.dimensions, d.value));
+
   })
   .on("hideAxis", function(d) {
+
 	  if (!__.dimensions.length) pc.detectDimensions();
-	  pc.dimensions(without(__.dimensions, d.value));
-  });
+	  pc.dimensions(hide(__.dimensions, d.value));
+
+  })
+  
+  ;
 
 // expose the state of the chart
 pc.state = __;
@@ -136,9 +152,37 @@ function extend(target, source) {
   return target;
 };
 
-function without(arr, item) {
-  return arr.filter(function(elem) { return item.indexOf(elem) === -1; })
+function hide(arr, item) {
+  __.hiddenRows[ item ] = 1;
+  var currentVisible = [];
+  var metrics = __.orderedMetrics;
+
+  for( var prop in metrics){
+    var name = metrics[prop];
+    if( !__.hiddenRows[name] ){
+      currentVisible.push(name);
+    } 
+    
+  }
+
+  return currentVisible;
 };
+function show(arr, item) {
+  __.hiddenRows[ item ] = null;
+  var currentVisible = [];
+  var metrics = __.orderedMetrics;
+
+  for( var prop in metrics){
+    var name = metrics[prop];
+
+    if( !__.hiddenRows[ name ] ){
+      currentVisible.push(name);
+    } 
+  }
+
+  return currentVisible;
+}
+
 pc.autoscale = function() {
   // yscale
   var defaultScales = {
@@ -160,6 +204,14 @@ pc.autoscale = function() {
     },
     "number": function(k) {
       var extent = d3.extent(__.data, function(d) { return +d[k]; });
+      console.log(extent);
+
+      if ( __.dataKey && __.visualizationKey && __.metricSet ) {
+        
+        extent = __.metricSet.getExtent( __.dataKey , __.visualizationKey , k );
+        console.log(extent);
+        console.log("CUSTOM EXTENT")
+      }
 
       // special case if single value
       if (extent[0] === extent[1]) {
@@ -201,6 +253,10 @@ pc.autoscale = function() {
   });
 
   __.hideAxis.forEach(function(k) {
+    yscale[k] = defaultScales[__.types[k]](k);
+  });
+
+  __.showAxis.forEach(function(k) {
     yscale[k] = defaultScales[__.types[k]](k);
   });
 
@@ -532,7 +588,7 @@ function rotateLabels() {
   delta = delta > 0 ? 5 : delta;
 
   __.dimensionTitleRotation += delta;
-  pc.svg.selectAll("text.label")
+  pc.svg.selectAll("text.parcoords-label")
     .attr("transform", "translate(0,-5) rotate(" + __.dimensionTitleRotation + ")");
   d3.event.preventDefault();
 }
@@ -554,14 +610,14 @@ pc.createAxes = function() {
       .each(function(d) { d3.select(this).call(axis.scale(yscale[d])); })
     .append("svg:text")
       .attr({
-        "text-anchor": "middle",
+        "text-anchor": "start",
         "y": 0,
-        "transform": "translate(0,-5) rotate(" + __.dimensionTitleRotation + ")",
+        "transform": "translate(0,-8) rotate(" + __.dimensionTitleRotation + ")",
         "x": 0,
-        "class": "label"
+        "class": "parcoords-label"
       })
       .text(function(d) {
-        return d in __.dimensionTitles ? __.dimensionTitles[d] : d;  // dimension display names
+        return __.metricSet.metrics[d].label;  // dimension display names
       })
       .on("dblclick", flipAxisAndUpdatePCP)
       .on("wheel", rotateLabels);
@@ -589,13 +645,15 @@ pc.updateAxes = function() {
       .each(function(d) { d3.select(this).call(axis.scale(yscale[d])); })
     .append("svg:text")
       .attr({
-        "text-anchor": "middle",
+        "text-anchor": "start",
         "y": 0,
-        "transform": "translate(0,-5) rotate(" + __.dimensionTitleRotation + ")",
+        "transform": "translate(0,-8) rotate(" + __.dimensionTitleRotation + ")",
         "x": 0,
-        "class": "label"
+        "class": "parcoords-label"
       })
-      .text(String)
+      .text(function(d) {
+        return __.metricSet.metrics[d].label;  // dimension display names
+      })
       .on("dblclick", flipAxisAndUpdatePCP)
       .on("wheel", rotateLabels);
 
@@ -607,11 +665,13 @@ pc.updateAxes = function() {
       .each(function(d) {
         d3.select(this).call(axis.scale(yscale[d]));
       });
-  g_data.select(".label")
+  g_data.select(".parcoords-label")
     .transition()
       .duration(1100)
-      .text(String)
-      .attr("transform", "translate(0,-5) rotate(" + __.dimensionTitleRotation + ")");
+      .text(function(d) {
+        return __.metricSet.metrics[d].label;  // dimension display names
+      })
+      .attr("transform", "translate(0,-8) rotate(" + __.dimensionTitleRotation + ")");
 
   // Exit
   g_data.exit().remove();
@@ -1202,7 +1262,7 @@ pc.brushMode = function(mode) {
       .attr("x", __.margin.left)
       .attr("y", __.margin.top)
       .attr("width", w())
-      .attr("height", h() + 2)
+      .attr("height", h() + 20)
       .style("opacity", 0)
       .call(drag);
   }

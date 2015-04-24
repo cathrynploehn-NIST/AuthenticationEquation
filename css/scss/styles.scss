@@ -1,5 +1,6 @@
 @import 'bourbon';
 @import 'bootstrap_changes';
+@import 'd3Parcoords';
 
 
 #USG-body, #vizualizations-holder, #vizualizations-holder-container,  html, .heatmap, .full-height {
@@ -40,6 +41,7 @@
     cursor: inherit;
     display: block;
 }
+
 #vizualizations-holder {
     
     #heatmap-overview-container {
@@ -59,7 +61,7 @@
 
     }
 
-    .heatmap-tier3,  {
+    .controls,  {
     	height: 100%;
     	overflow-y: scroll;
     	overflow-x: hidden;
