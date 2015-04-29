@@ -8,7 +8,7 @@ d3.parcoords = function(config) {
     types: {},
     brushed: false,
     mode: "queue",
-    rate: 20,
+    rate: 12,
     width: 600,
     height: 300,
     margin: { top: 200, right: 30, bottom: 50, left: 0 },
@@ -204,13 +204,8 @@ pc.autoscale = function() {
     },
     "number": function(k) {
       var extent = d3.extent(__.data, function(d) { return +d[k]; });
-      console.log(extent);
-
-      if ( __.dataKey && __.visualizationKey && __.metricSet ) {
-        
+      if ( __.dataKey && __.visualizationKey && __.metricSet ) {       
         extent = __.metricSet.getExtent( __.dataKey , __.visualizationKey , k );
-        console.log(extent);
-        console.log("CUSTOM EXTENT")
       }
 
       // special case if single value
@@ -617,7 +612,7 @@ pc.createAxes = function() {
         "class": "parcoords-label"
       })
       .text(function(d) {
-        return __.metricSet.metrics[d].label;  // dimension display names
+          return __.metricSet.metrics[d].label;  // dimension display names
       })
       .on("dblclick", flipAxisAndUpdatePCP)
       .on("wheel", rotateLabels);
@@ -652,7 +647,7 @@ pc.updateAxes = function() {
         "class": "parcoords-label"
       })
       .text(function(d) {
-        return __.metricSet.metrics[d].label;  // dimension display names
+          return __.metricSet.metrics[d].label;  // dimension display names
       })
       .on("dblclick", flipAxisAndUpdatePCP)
       .on("wheel", rotateLabels);
@@ -668,8 +663,9 @@ pc.updateAxes = function() {
   g_data.select(".parcoords-label")
     .transition()
       .duration(1100)
+      // dimension display names
       .text(function(d) {
-        return __.metricSet.metrics[d].label;  // dimension display names
+          return __.metricSet.metrics[d].label;          
       })
       .attr("transform", "translate(0,-8) rotate(" + __.dimensionTitleRotation + ")");
 
@@ -789,6 +785,12 @@ function brushUpdated(newSelection) {
   pc.render();
 }
 
+pc.brushUpdated = function(newSelection) {
+  __.brushed = newSelection;
+  events.brush.call(pc,__.brushed);
+  pc.render();
+}
+
 function brushPredicate(predicate) {
   if (!arguments.length) { return brush.predicate; }
 
@@ -854,6 +856,7 @@ pc.brushMode = function(mode) {
     var actives = __.dimensions.filter(is_brushed),
         extents = actives.map(function(p) { return brushes[p].extent(); });
 
+
     // We don't want to return the full data set when there are no axes brushed.
     // Actually, when there are no axes brushed, by definition, no items are
     // selected. So, let's avoid the filtering and just return false.
@@ -891,6 +894,7 @@ pc.brushMode = function(mode) {
         }
       });
   };
+
 
   function brushExtents() {
     var extents = {};
