@@ -250,7 +250,7 @@ var USG = USG || {};
 				// Holds color values for different scales
 				var colorbrewer = {
 				    Greys: {
-				    	2: ["#ffffff","#000000"],
+				    	2: ["#ffffff","#AA00FF"],
 				        3: ["#f0f0f0","#bdbdbd","#636363"],
 				        4: ["#f7f7f7","#cccccc","#969696","#525252"],
 				        5: ["#f7f7f7","#cccccc","#969696","#636363","#252525"],
@@ -355,13 +355,13 @@ var USG = USG || {};
 								gui.addVisualization( "parcoords-overview" );
 
 								$.when( thisObj.visualizations[ "parcoords-overview" ].init() , thisObj.visualizations[ "heatmap-overview" ].init() ).done(function () {
-									gui.showVisualization( visualizationKey );
+									gui.showVisualization( dataLocation );
 								});
 
 							} else {
 
 								$.when( thisObj.visualizations[ "heatmap-overview" ].addData( dataLocation , "heatmap-overview" , thisObj.datasets[ dataLocation ] ), thisObj.visualizations[ "parcoords-overview" ].addData( dataLocation , "parcoords-overview" , thisObj.datasets[ dataLocation ] ) ).done(function () {
-									gui.showVisualization( visualizationKey );
+									gui.showVisualization( dataLocation );
 								});
 
 							}
@@ -371,11 +371,11 @@ var USG = USG || {};
 						// Parameters: dataLocation: where data is located, visualizationKey: unique identifier for thisObj visualization , dataset: dataset object corresponding with the dataLocation identifier, config: type of configuration the heatmap is using, metricSet: metricSet object 
 						var visualizationKey = "heatmap-" + dataLocation;
 						thisObj.visualizations[visualizationKey] = visualization.create( dataLocation , visualizationKey , [thisObj.datasets[ dataLocation ]] , "heatmap" , thisObj.metricSet );
-						gui.addVisualization( visualizationKey );
+						gui.addVisualization( dataLocation );
 
 						visualizationKey = "parcoords-" + dataLocation;
 						thisObj.visualizations[visualizationKey] = visualization.create( dataLocation , visualizationKey , [thisObj.datasets[ dataLocation ]] , "parcoords" , thisObj.metricSet );
-						gui.addVisualization( visualizationKey );
+						// gui.addVisualization( visualizationKey );
 
 						$.when( thisObj.visualizations[ "parcoords-" + dataLocation ].init() , thisObj.visualizations[ "heatmap-" + dataLocation ].init() ).done(function () {
 							console.log("Create visualization")
@@ -672,7 +672,7 @@ var USG = USG || {};
 					} else if( thisObj.mode == "parcoords" ){
 
 						console.log("Create parallel coordinates with default config");
-						thisObj.setMetricColorScheme( "heatmap-overview" );
+						thisObj.setMetricColorScheme( "parcoords" );
 
 						// Create new tier1, tier2, tier3
 						var defTiersCreated = $.Deferred();
@@ -693,7 +693,7 @@ var USG = USG || {};
 					} else if ( thisObj.mode == "parcoords-overview" ){
 
 						console.log("Create parallel coordinates with overview config");
-						thisObj.setMetricColorScheme( "parcoords-overview" );
+						thisObj.setMetricColorScheme( );
 
 						// Create new tier1, tier2, tier3
 						var defTiersCreated = $.Deferred();
@@ -883,11 +883,14 @@ var USG = USG || {};
 					this.dataset = dataset;
 					this.metricSet = metricSet;
 
-					if( mode == "heatmap-overview" || mode == "parcoords-overview" ){
+					if( mode == "heatmap-overview" ){
 						this.mode = mode;
 						this.visualizationKey = "global";
 						
-					} else if ( mode == "parcoords" ) {
+					} else if (mode == "parcoords-overview"){
+						this.mode = mode;
+						this.visualizationKey = "global";
+					} else if ( mode == "parcoords") {
 
 						this.mode = mode;
 						this.visualizationKey = visualizationKey;
@@ -1497,8 +1500,9 @@ var USG = USG || {};
 					},
 					visualize: {
 						value: function ( ) {
-							var thisObj = this;
-							var id = "#" + this.html.id;
+							var thisObj = this,
+								id = "#" + this.html.id, 
+								color = thisObj.colorBy();
 
 							$(id).html('');
 							thisObj.parcoords = null;
@@ -1529,6 +1533,7 @@ var USG = USG || {};
 								.interactive()
 								.brushMode("1D-axes")
 								.hideAxis("datasetIndex")
+								.color()
 							;
 							for(var i = 0; i < thisObj.orderedMetricsList.length; i++){
 								// thisObj.hideMultiColumn( thisObj.orderedMetricsList[i] );
@@ -1635,11 +1640,54 @@ var USG = USG || {};
 					    configurable: true, 
 					    writable: true
 					},
-					bundleBy : {
+					bundleBy: {
 						value: function ( metricName ) {
 
 							this.parcoords.bundleDimension( metricName ).render(); 
 							this.currentBundledDimension = metricName;
+
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					colorBy: {
+						value: function ( metricName ) {
+							var thisObj = this;
+								
+
+							// return color function based on plot and dimension
+							function zcolor(col, dimension) {
+								var z = zscore(_(col).pluck(dimension).map(parseFloat)),
+							  		zcolorscale = thisObj.metricSet.getZscoreColorScale( metricName , thisObj.dataKey , thisObj.visualizationKey );
+								return function(d) { return zcolorscale(z(d[dimension])) }
+							};
+
+							// color by zscore
+							function zscore(col) {
+							  var n = col.length,
+							      mean = _(col).mean(),
+							      sigma = _(col).stdDeviation();
+							  return function(d) {
+							    return (d-mean)/sigma;
+							  };
+							};
+
+							if( metricName == "datasetIndex" || !metricName){ // color categorically
+								var colors = d3.scale.category20b();
+								colorFunction = function(d) { return colors(d.datasetIndex); };
+								console.log(colorFunction)
+								console.log(colorFunction(0));
+								if( !metricName ){
+									return colorFunction;
+								}
+							} else { // color statistically
+								colorFunction = zcolor(thisObj.parcoords.data(), metricName);
+							}
+
+							
+							this.parcoords.color( colorFunction ).render(); 
+							this.currentColor = metricName;
 
 						},
 						enumerable: true,
@@ -1772,7 +1820,7 @@ var USG = USG || {};
 
 								$(".overview-view-btn").click( function(e) {
 									
-									var id = "#view-heatmap-" + $(this).attr("id");
+									var id = "#view-" + $(this).attr("id");
 									$(id).click();
 									
 								});
@@ -2181,6 +2229,8 @@ var USG = USG || {};
 
 							if(this.mode == "parcoords-overview"){
 								this.addHideDataControl();
+							} else if ( this.mode == "heatmap-overview" ) {
+								this.addDataControl();
 							}
 
 							this.draw( this.addControls );
@@ -2320,14 +2370,10 @@ var USG = USG || {};
 							} else if ( thisObj.mode == "parcoords-overview" ) {								
 								$( classname ).html('About this dataset');
 								classname = '#about-dataset-' + thisObj.parentKey;
-								$(classname).append( '' );
-
-								$( parent + ' .about-dataset-container').html('<h4>Display dataset</h4><div class="btn-group about-dataset-toggle-group" data-toggle="buttons"></div>');
 
 							} else {
 
 								$( classname ).html('About dataset(s)');
-								$( parent + ' .about-dataset-container').append('');
 
 							}
 						},
@@ -2394,6 +2440,9 @@ var USG = USG || {};
 
 							// Bundle by 
 							$( parent + ' .bundling-holder').append('<h5>Bundle by</h5><div class="btn-group-vertical navbar-btn" id="bundleBy-menu" role="group" aria-label="..."></div>');
+
+							// Color by 
+							$( parent + ' .bundling-holder').append('<h5>Color by</h5><div class="btn-group-vertical navbar-btn" id="colorBy-menu" role="group" aria-label="..."></div>');
 						},
 						enumerable: true,
 						configurable: true, 
@@ -2488,13 +2537,23 @@ var USG = USG || {};
 								metricLabel = metricObj.label;
 
 							// Bundle by
-							$( parent + ' #bundleBy-menu').append('<button class="btn btn-default btn-sm" href="#" role="button" data="' + metricName + '" id="view-' + metricName + '" href="view-' + metricName + '">' + thisObj.metricSet.metrics[metricName].label + '</button>')
+							$( parent + ' #bundleBy-menu').append('<button class="btn btn-default btn-sm" href="#" role="button" data="' + metricName + '" id="bundle-' + metricName + '" href="bundle-' + metricName + '">' + thisObj.metricSet.metrics[metricName].label + '</button>')
 
-							var name = parent + " #view-" + metricName;
+							// Color by
+							$( parent + ' #colorBy-menu').append('<button class="btn btn-default btn-sm" href="#" role="button" data="' + metricName + '" id="color-' + metricName + '" href="view-' + metricName + '">' + thisObj.metricSet.metrics[metricName].label + '</button>')
+
+							var name = parent + " #bundle-" + metricName;
 							$( name ).on("click", function(e){
 								e.preventDefault();
 								var metricName = $(e.target).attr("data");
 								thisObj.bundleBy( metricName );
+							});
+
+							name = parent + " #color-" + metricName;
+							$( name ).on("click", function(e){
+								e.preventDefault();
+								var metricName = $(e.target).attr("data");
+								thisObj.colorBy( metricName );
 							});
 
 						},
@@ -2520,9 +2579,22 @@ var USG = USG || {};
 					addHideDataControl: {
 						value: function () {
 							var parent = "#" + this.parentKey;
-							$(parent + ' .about-dataset-toggle-group').html('');
+							$(parent + ' .about-dataset-holder').html('');
 							for(var i  = 0; i < this.dataset.length; i++){
-								$( parent + ' .about-dataset-toggle-group').append('<label class="btn btn-default active show-hide-data-btn" id="' + i + '-show-hide-data-btn"><input type="checkbox" autocomplete="off" checked>' + this.dataset[i].getName() + '</label>');
+								$( parent + ' .about-dataset-holder').append('<tr><th>'+ this.dataset[i].getName() +'<td><div class="btn-group about-dataset-toggle-group" data-toggle="buttons"><label class="btn btn-default btn-xs active show-hide-data-btn" id="' + i + '-show-hide-data-btn"><input type="checkbox" autocomplete="off" checked> toggle view </label></div></td></tr>');
+							}
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					addDataControl : {
+						value: function() {
+							var parent = "#" + this.parentKey;
+							$(parent + ' .about-dataset-holder').html('');
+							for(var i  = 0; i < this.dataset.length; i++){
+								var data = this.dataset[i].getData();
+								$( parent + ' .about-dataset-holder').append('<tr><th>'+ this.dataset[i].getName() +'<td><b># passwords:</b> ' + data.length + '</td></tr>');
 							}
 						},
 						enumerable: true,
@@ -2994,6 +3066,19 @@ var USG = USG || {};
 						enumerable: true,
 					    configurable: true, 
 					    writable: true
+					},
+					colorBy: {
+						value: function ( metricName ) {
+							// Color blocks for connected tiers
+						    for(var i = 0; i < this.connectedTiers.length; i++){
+						    	if( this.connectedTiers[i].colorBy ) {
+						    		this.connectedTiers[i].colorBy( metricName );
+						    	}
+						    }
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
 					}
 
 				} ); 
@@ -3125,12 +3210,15 @@ var USG = USG || {};
 
 					}
 
-					thisObj.setCategoryVisibility( "lpd" , key , visualizationKey , false );
-					thisObj.setCategoryVisibility( "passwordStructure" , key , visualizationKey , false );
-					thisObj.setCategoryVisibility( "entropySummary" , key , visualizationKey , false );
-					thisObj.setCategoryVisibility( "Dataset" , key , visualizationKey , false );
-					thisObj.setVisibility( "lpd" , key , visualizationKey , true );
-					thisObj.setVisibility( "newlpd" , key , visualizationKey , true );
+					if( visualizationKey != "parcoords" && visualizationKey != "parcoords-overview" ){
+						thisObj.setCategoryVisibility( "lpd" , key , visualizationKey , false );
+						thisObj.setCategoryVisibility( "passwordStructure" , key , visualizationKey , false );
+						thisObj.setCategoryVisibility( "entropySummary" , key , visualizationKey , false );
+						thisObj.setCategoryVisibility( "Dataset" , key , visualizationKey , false );
+						thisObj.setVisibility( "lpd" , key , visualizationKey , true );
+						thisObj.setVisibility( "newlpd" , key , visualizationKey , true );
+					}
+					
 
 				},
 				setCategoryVisibility: function ( categoryName , key , visualizationKey , visible ) {
@@ -3426,6 +3514,11 @@ var USG = USG || {};
 					return this.metrics[ metricName ].getHighlightColorScale( dataKey , visualizationKey );
 
 				},
+				getZscoreColorScale: function ( metricName , dataKey , visualizationKey ) {
+
+					return this.metrics[ metricName ].getZscoreColorScale( dataKey , visualizationKey );
+
+				},
 				setVisibility: function ( metricName , dataKey , visualizationKey , visible ) {
 
 					this.metrics[ metricName ].setVisibility( dataKey , visualizationKey , visible );
@@ -3689,12 +3782,35 @@ var USG = USG || {};
 				},
 				setColorScheme: function ( key , visualizationKey , colorscheme ) { 
 					var thisObj = this;
+					
+					// return color function based on plot and dimension
+					function zcolor(col, dimension) {
+					  var z = zscore(_(col).pluck(dimension).map(parseFloat))
+					  return function(d) { return zcolorscale(z(d[dimension])) }
+					};
+
+					// color by zscore
+					function zscore(col) {
+					  var n = col.length,
+					      mean = _(col).mean(),
+					      sigma = _(col).stdDeviation();
+					  return function(d) {
+					    return (d-mean)/sigma;
+					  };
+					};
+
 					if ( thisObj.domainType ) {	
 						if( visualizationKey == "global" ){
-							var min =  thisObj.domainVal.global.min;
-							var max =  thisObj.domainVal.global.max;
-						
-		 					var domain = [min, max];
+							var min =  thisObj.domainVal.global.min,
+								max =  thisObj.domainVal.global.max,
+								mid = 0,
+		 						domain = [min, max];
+
+		 					if(max > min){
+		 						mid = ( max - min ) / 2; 
+		 					} else {
+		 						mid = min;
+		 					}
 		
 							if( !this.colorScale[ "global" ] ){
 								this.colorScale[ "global" ] = {};
@@ -3708,10 +3824,24 @@ var USG = USG || {};
 								.domain(domain)
 								.range(colorscheme.highlight).interpolate(d3.interpolateRgb);
 
+							
+							domain = [ min, mid, max ];
+
+							this.colorScale[ "global" ].zscore = d3.scale.linear()
+								.domain([-2,-0.5,0.5,2])
+								.range(["blue", "#666", "#666", "red"]).interpolate(d3.interpolateLab);
+
 						} else {
 							var min =  thisObj.domainVal[ key ].min;
 							var max =  thisObj.domainVal[ key ].max;
-						
+							var mid = 0;
+
+							if(max > min){
+		 						mid = ( max - min ) / 2; 
+		 					} else {
+		 						mid = min;
+		 					}
+
 		 					var domain = [min, max];
 		
 							if( !this.colorScale[ key ] ){
@@ -3729,6 +3859,12 @@ var USG = USG || {};
 							this.colorScale[ key ][ visualizationKey ].highlight = d3.scale.linear()
 								.domain(domain)
 								.range(colorscheme.highlight).interpolate(d3.interpolateRgb);
+
+							domain = [ min, mid, max ];
+
+							this.colorScale[ key ][ visualizationKey ].zscore = d3.scale.linear()
+								.domain([-2,-0.5,0.5,2])
+								.range(["blue", "#666", "#666", "red"]).interpolate(d3.interpolateLab);
 
 						}
 					}
@@ -3748,6 +3884,16 @@ var USG = USG || {};
 						return this.colorScale[ key ][ visualizationKey ].highlight;
 					}
 
+				},
+				getZscoreColorScale: function ( key , visualizationKey ) {
+					var zcolorscale = {};
+
+					if( visualizationKey == "global" ){
+						return this.colorScale[ "global" ].zscore;
+					} else {
+						return this.colorScale[ key ][ visualizationKey ].zscore;
+					}
+					
 				},
 				setVisibility: function ( key , visualizationKey , visiblility ) {
 					if( visualizationKey == "global" ) {
@@ -3804,6 +3950,8 @@ var USG = USG || {};
 				initialize: "html/visualizations-holder.html"
 			}
 
+			var activeType = "heatmap"; // Current viz type selected on the visualization navbar
+			var activeData = ""; // Current dataset being displayed
 
 			/* Public Methods */
 			var initialize = function ( callback , thisObj , fileLocation ) { 
@@ -3820,38 +3968,49 @@ var USG = USG || {};
 
 					callback( thisObj , fileLocation );
 
+					$('.vis-type').on('click', function(e){
+						activeType = $(e.target).attr("id");
+						showVisualization( activeData );
+					});
+
 				});
 
 			};
 
 			var addVisualization = function ( visualizationKey ) {
 				var name = "view-" + visualizationKey;
-				$('#navbar-displayed-visualization').prepend('<li><a class="' + visualizationKey + '" id="' + name + '" href="' + name + '">' + visualizationKey + '</a></li>');
+
+				if(visualizationKey == "heatmap-overview" || visualizationKey == "parcoords-overview"){
+					if(visualizationKey == "heatmap-overview"){
+						$('#navbar-displayed-visualization').prepend('<li><a class="overview" id="' + name + '" href="' + name + '">All</a></li>');
+					}
+				} else {
+					$('#navbar-displayed-visualization').prepend('<li><a class="' + visualizationKey + '" id="' + name + '" href="' + name + '">' + visualizationKey + '</a></li>');
+				
+				}
 				
 				name = "#" + name;
 				$( name ).on("click", function(e){
 					e.preventDefault();
 					var visualizationKey = $(e.target).attr("class");
+					activeData = visualizationKey;
 					showVisualization( visualizationKey );
 				});
 
 			};
 
 			var showVisualization = function ( visualizationKey ) {
-
-				// var currentVisualization = $('#navbar-displayed-visualization-name').html();
-				
-				// if( currentVisualization != visualizationKey ){
-					// var classnameHide = "#" + currentVisualization + "-container";
-					$('.visualization-instance').hide({
+					activeData = visualizationKey;
+					$('.visualization-instance').fadeOut({
 						duration: 0,
 						done: function() {
-							var classnameShow = "#" + visualizationKey + "-container";
+
+							// Get which thing is visible
+							var key = activeType + "-" + visualizationKey;
+							var classnameShow = "#" + key + "-container";
 							$(classnameShow).fadeIn("slow");
 						}
 					});
-
-					
 
 					$('#navbar-displayed-visualization-name').html( visualizationKey );
 				// }
