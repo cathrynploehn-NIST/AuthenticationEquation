@@ -1,11 +1,12 @@
 /*
 
 */
-// Declare the USG namespace
-var USG = USG || {};
+
 /**
  * The USG namespace.
- */ 
+ */
+this.USG = USG || {};
+ 
 (function(){
 	/** Metric and visualization constants */
 	var constants = (function(){
@@ -275,15 +276,15 @@ var USG = USG || {};
 	})( );
 	
 	/** Current environment variable */
-	var currentEnvironment; 
+	this.currentEnvironment; 
 	/** Flag determining whether example data is shown */
-	var showExample = false;
+	this.showExample = false;
 	/** Controls the visualizations, datasets uploaded, and metric types. */
-	var environment = ( function(){
+	this.environment = ( function(){
 		/* Private Methods */
 		
 		/** Holds datasets and associated visualizations for that dataset. */
-		var EnvironmentInstance = function( ){
+		this.EnvironmentInstance = function( ){
 			var thisObj = this;
 			this.createData = dataset;
 			this.datasets = []; // Array of dataset objects stored here ( loadData(); )
@@ -419,7 +420,7 @@ var USG = USG || {};
 			* Processes a file into CSV format and loads as a visualization. Creates metric objects used in the visualization
 			* @param {thisObj} name - name of csv file
 			* @param {dataLocation} File - File to be parsed into CSV
-			* @param {Data} Data - Data to be parsed.
+			* @param {Data} Data - Optional.
 			* @param {function} callback - Optional. 
 			*/
 			processData: function ( thisObj , dataLocation , data , callback ) {
@@ -451,11 +452,11 @@ var USG = USG || {};
 		};
 		/* Public Methods */
 		/** Create and return environmentInstance */
-		var create = function( callback ){
+		this.create = function( callback ){
 			return new EnvironmentInstance( callback );
 		};
 		/** Templates and associated operations for dataset objects. */
-		var dataset = ( function(){
+		this.dataset = ( function(){
 			
 			var DatasetInstance = function ( data , name ) {
 				this.dataset = data; // Holds data 
@@ -509,14 +510,14 @@ var USG = USG || {};
 			};
 		})();
 		/** Templates for visualization. */
-		var visualization = ( function(){
+		this.visualization = ( function(){
 			var thisObj = this;
 
 			/** Holds a dataset and associated visualizations for that dataset */
-			var VisualizationInstance = function ( dataKey , visualizationKey , datasets , config , metricSet ){
+			this.VisualizationInstance = function ( dataKey , visualizationKey , datasets , config , metricSet ){
 				
-				this.key = visualizationKey; 
-				this.visualizationKey = visualizationKey; // Key for specific heatmap
+				this.key = visualizationKey; // Key for specific heatmap
+				this.visualizationKey = visualizationKey;
 				this.mode = config;
 				this.container = this.key + "-container";
 				this.dataKey = dataKey; // Key for data heatmap is representing
@@ -530,7 +531,6 @@ var USG = USG || {};
 				
 			};
 			VisualizationInstance.prototype = {
-				/** Create and initialize visualization tiers */
 				init: function ( ) {	
 					var thisObj = this;	
 					var deferred = $.Deferred();			
@@ -612,7 +612,6 @@ var USG = USG || {};
 					}
 					return deferred.promise(); 
 				},
-				/** Add new data and revisualize tiers if necessary  */
 				addData: function ( dataLocation , visualizationKey , dataset ) {
 					var thisObj = this,
 						deferred = $.Deferred();
@@ -662,14 +661,12 @@ var USG = USG || {};
 					if( mode == "heatmap-overview" || mode == "parcoords"){
 						visualization = "global";
 					} else {
-						visualization = this.key;
+						visualization = this.visualizationKey;
 					}
 					this.metricSet.setColorScheme( this.dataKey , visualization , this.colorscheme );
 				}, 
 				/** Create and add tiers with the same dataset to this object.
-				* @param {array} whichTiers - Each index in the array represents a new tier to create. The value of each index represents the type of tier to create. 
-				* @param {array} dataset - The dataset to visualize.
-				* @param {String} mode - mode in which to create the tier */
+				* @param {array} whichTiers - Each index in the array represents a new tier to create. The value of each index represents the type of tier to create. */
 				createTiers: function ( whichTiers , dataset , mode ) {
 					var thisObj = this;
 					for (var i = 0; i < whichTiers.length; i++) {
@@ -678,15 +675,13 @@ var USG = USG || {};
 						if( whichTiers[i] == "HeatmapTier1" || whichTiers[i] == "HeatmapTier2" || whichTiers[i] == "Controls" ){
 							// Will append html to the heatmap container
 							// type , dataKey , key , datasets , visualizationKey , metricSet , parentKey
-							thisObj.tiers.push ( tier.create( whichTiers[i], thisObj.dataKey , index , dataset , thisObj.key , thisObj.metricSet , thisObj.key , thisObj.mode ) );
+							thisObj.tiers.push ( tier.create( whichTiers[i], thisObj.dataKey , index , dataset , thisObj.visualizationKey , thisObj.metricSet , thisObj.key , thisObj.mode ) );
 						}
 						
 						
 					}
+
 				},
-				/** 
-				* Create and add single tier to this object. 
-				*/
 				createTier: function ( whichTier , dataset , mode ) {
 					var thisObj = this,
 					index = thisObj.tiers.length; // Represents the unique identifier of the new tier
@@ -694,11 +689,11 @@ var USG = USG || {};
 					if( whichTier == "HeatmapTier1" || whichTier == "HeatmapTier2" || whichTier == "Controls" || whichTier == "Parcoords"){
 						// Will append html to the heatmap container
 						// type , dataKey , key , datasets , visualizationKey , metricSet , parentKey
-						thisObj.tiers.push ( tier.create( whichTier , thisObj.dataKey , index , dataset , thisObj.key , thisObj.metricSet , thisObj.key , mode ) );
-					}		
+						thisObj.tiers.push ( tier.create( whichTier , thisObj.dataKey , index , dataset , thisObj.visualizationKey , thisObj.metricSet , thisObj.key , mode ) );
+					}
+						
 				},
-				/** Initialize tiers in the visualization object (create SVG and visualize) */
-				initializeTiers: function( deferred ) {
+				initializeTiers: function(deferred) {
 					
 					var thisObj = this;
 					if ( thisObj.tiers ) {
@@ -742,11 +737,11 @@ var USG = USG || {};
 				}
 			};
 			/** Visualization tiers (modules) */
-			var tier = ( function(){
+			this.tier = ( function(){
 				/* Private Methods */
 
 				/** Generic version of visualization tier (module). */
-				var TierInstance = function( type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode ){
+				this.TierInstance = function( type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode ){
 					var thisObj = this;
 					this.key = key;
 					this.parentKey = parentKey;
@@ -757,6 +752,7 @@ var USG = USG || {};
 					if( mode == "heatmap-overview" ){
 						this.mode = mode;
 						this.visualizationKey = "global";
+						
 					} else if (mode == "parcoords-overview"){
 						this.mode = mode;
 						this.visualizationKey = "parcoords-overview";
@@ -1180,7 +1176,7 @@ var USG = USG || {};
 				* @param {String} id - HTML id of the resutling svg
 				* @param {String} parentContainer - HTML container where the resulting svg element will reside 
 				*/
-				var Svg = function ( height, width, id, parentContainer ) {
+				this.Svg = function ( height, width, id, parentContainer ) {
 					
 					this.html = {
 						container: {
@@ -1227,7 +1223,7 @@ var USG = USG || {};
 				};
 
 				/** Parallel coordinates */
-				var Parcoords = function (type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode ) {
+				this.Parcoords = function (type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode ) {
 					// Call superclass
 					TierInstance.call( this ,type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode );
 					
@@ -1453,7 +1449,7 @@ var USG = USG || {};
 				}); 
 				Parcoords.prototype.constructor = Parcoords;
 				/** Heatmap small sidebar view */
-				var HeatmapTier1 = function (type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode ) {
+				this.HeatmapTier1 = function (type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode ) {
 					// Call superclass
 					TierInstance.call( this ,type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode );
 					
@@ -1578,7 +1574,7 @@ var USG = USG || {};
 				HeatmapTier1.prototype.constructor = HeatmapTier1;
 
 				/** Heatmap medium view */
-				var HeatmapTier2 = function (type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode ) {
+				this.HeatmapTier2 = function (type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode ) {
 					TierInstance.call( this , type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode );
 					
 					this.grid = {
@@ -1821,7 +1817,7 @@ var USG = USG || {};
 				HeatmapTier2.prototype.constructor = HeatmapTier2;
 
 				/** Visualization controls */  
-				var Controls = function (type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode) {
+				this.Controls = function (type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode) {
 					TierInstance.call( this , type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode);
 					// Size and margin information for grid
 					this.grid = {
@@ -2638,7 +2634,7 @@ var USG = USG || {};
 				};
 
 				/** Create visualization tier (module) */
-				var create = function( type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode ){
+				this.create = function( type , dataKey , key , dataset , visualizationKey , metricSet , parentKey , mode ){
 					if( types[type] ){
 						var tier = types[type];						
 						if( mode ) {
@@ -2659,7 +2655,7 @@ var USG = USG || {};
 
 			/* Public Methods */
 			/** Create visualization instance */
-			var create = function( dataKey , visualizationKey , dataset, config , metricSet ){
+			this.create = function( dataKey , visualizationKey , dataset, config , metricSet ){
 				return new VisualizationInstance( dataKey , visualizationKey , dataset , config , metricSet );
 			};
 			return {
@@ -2667,7 +2663,7 @@ var USG = USG || {};
 			};
 		})();
 		/** Templates for metric operations */
-		var metric = ( function(){
+		this.metric = ( function(){
 			
 			/* Private Methods */
 			// Holds metric type data
@@ -2676,7 +2672,7 @@ var USG = USG || {};
 			var METRIC_PROP = constants.metric;
 			
 			/** Class MetricSet:Holds a metric and associated specifications for that metric. */
-			var MetricSet = function(  ){
+			this.MetricSet = function(  ){
 				this.metrics = {};
 				this.metricList = [];
 				this.categories = [];
@@ -3014,8 +3010,8 @@ var USG = USG || {};
 				}
 			};
 			// Class MetricInstance
-			// Holds a metric and associated specifications for that metric.
-			var MetricInstance = function( type ){
+			/** Defines a metric and its properties used in visualization. */
+			this.MetricInstance = function( type ){
 				if( type ){
 					
 					this.label;
@@ -3288,8 +3284,8 @@ var USG = USG || {};
 			}
 			
 			/* Public Methods */
-			// Create metric and return it
-			var createSet = function( ){
+			/** Create metric and return it */
+			this.createSet = function( ){
 				return new MetricSet( );
 			};
 			return {
@@ -3297,7 +3293,7 @@ var USG = USG || {};
 			};
 		})();
 		/** GUI operations for the environment */
-		var gui = ( function(){
+		this.gui = ( function(){
 			
 			/* Private Methods */
 			// HTML to be loaded
@@ -3306,8 +3302,8 @@ var USG = USG || {};
 			}
 			var activeType = "heatmap"; // Current viz type selected on the visualization navbar
 			var activeData = ""; // Current dataset being displayed
-			/* Public Methods */
-			var initialize = function ( callback , thisObj , fileLocation ) { 
+			/** Load html and size visualization container */
+			this.initialize = function ( callback , thisObj , fileLocation ) { 
 				// Load external html: Navigation, main 
 				$("#USG-visualization").load(EXTERNAL_HTML.initialize, function done () {
 					var navHeight = $('#navbar-main').outerHeight() * 2, // Calculate navbar height
@@ -3322,8 +3318,8 @@ var USG = USG || {};
 					});
 				});
 			};
-
-			var addVisualization = function ( visualizationKey ) {
+			/** Add visualization to the gui controls */
+			this.addVisualization = function ( visualizationKey ) {
 				var name = "view-" + visualizationKey;
 				if(visualizationKey == "heatmap-overview" || visualizationKey == "parcoords-overview"){
 					if(visualizationKey == "heatmap-overview"){
@@ -3341,7 +3337,8 @@ var USG = USG || {};
 					showVisualization( visualizationKey );
 				});
 			};
-			var showVisualization = function ( visualizationKey ) {
+			/** Display visualization */
+			this.showVisualization = function ( visualizationKey ) {
 					activeData = visualizationKey;
 					$('.visualization-instance').fadeOut({
 						duration: 0,

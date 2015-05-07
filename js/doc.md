@@ -1,8 +1,26 @@
-# USG.visualization.environment
+# USG
 
-####Data types:
- - dataLocation: String referring to the file location of a dataset (with .csv or .txt). Used as a unique key for each dataset (without .csv or .txt)
+##Properties
+- this.currentEnvironment: Current environment variable (see USG.environment)
+- this.showExample: Flag determining whether example data is shown
 
+##USG.constants
+Metric and visualization constants
+
+###USG.constants.metric
+Metric definitions.
+
+- METRIC_TYPES: Define metric properties.
+- CATEGORY_TYPES: Define properties for each metric category, if necessary.
+- DOMAIN_TYPES: Shorthand for types of domains each metric can have.
+
+###USG.constants.colors
+Color constants.
+
+- colorbrewer: Holds color values for different scales
+
+## USG.environment
+Controls the visualizations, datasets uploaded, and metric types.
 
 ####Classes: 
 
@@ -11,13 +29,16 @@
 	- __createData__ : Object representing the namespace "environment.dataset." Used to create new datasets.
 	- __datasets__ : Array. Holds array of Dataset objects loaded using loadData().
 	- __metricSet__ : MetricSet. Holds set of metric objects. This set represents metadata for all datatypes in datasets[]. New metrics are created when loadData succeeds in loading data to the class and a datatype is not already in the MetricSet. MetricSet starts with 0 metrics until the first dataset is loaded.  
-	- __this.visualizations__ : Array. Holds array of visualization objects for that environment instance. 
+	- __visualizations__ : Array. Holds array of visualization objects for that environment instance. 
+	- __datasetCount__: Number of datasets in this.datasets (see above)
 
   - _Methods_:
-	- __addHeatmapSet( dataLocation: String, config: String )__: adds a HeatmapSet with the data location specified and the configuration specified.
-		configurations available: "default"
-		See heatmap.create(); For parameters. 
-	- __loadData( url, callback ) _( asychronous )___: loads .csv file at the specified url location. The loaded data is used to create a Dataset object. If metrics in the dataset don't exist, new metrics are created in the _metricSet_ property. Global domains of each metric are reset and data-specific domains are set using the new data.
+	- __addVisualization( dataLocation: String )__: adds a visualization with the data location. 
+	- __loadData( thisObj: EnvironmentInstance , dataLocation: String,  callback: Function ) _( asychronous )___: loads .csv file at the specified url location. The loaded data is used to create a Dataset object. If metrics in the dataset don't exist, new metrics are created in the _metricSet_ property. Global domains of each metric are reset and data-specific domains are set using the new data.
+	- __alertMessage( msg: String )__: Updates GUI header with a bootstrap alert in Yellow.
+	- __parseData( name: String, file: File , callback: Function ) _( asychronous )___: Parses a file into CSV format. Creates metric objects used in the visualization
+	- __processData( thisObj: EnvironmentInstance , dataLocation: String , data: Data , callback: function )__: Processes a file into CSV format and loads as a visualization. Creates metric objects used in the visualization
+	- __clear()__: Empty the environment
 
   - _On initialization_:
 
@@ -26,10 +47,10 @@
 
 ####Public Methods:
 
-- __environment.create( callback: function )__ - returns EnviromentInstance class. Exececutes callback function when asynchronous functions done.
+- __this.create( callback: function )__ - returns EnviromentInstance class. Exececutes callback function when asynchronous functions done.
 
 
-## (...).environment.dataset
+## environment.dataset
 Templates and associated operations for dataset objects.
 
 ####Classes:
@@ -52,26 +73,32 @@ Templates and associated operations for dataset objects.
 - __dataset.create( data: Array )__ - Returns new DatasetInstance using passed data to create the object. 
 
 
-## (...).environment.heatmap
-Templates for heatmap visualization. 
+## environment.visualization
+Templates for visualization. 
 
 ####Classes:
 
-- __HeatmapSet.__ Holds a dataset and associated visualizations for that dataset.
+- __VisualizationInstance.__ Holds a dataset and associated visualizations for that dataset.
 	- _Properties_:
-		- __key__ : Key for specific heatmap.
-		- __dataKey__ : Key for data heatmap is representing.
-		- __tiers__ : Holds tiers contained in this specific heatmap.
+		- __key__ : String. Key for specific heatmap.
+		- __container__: String. Key for the html container
+		- __dataKey__ : String. Key for data heatmap is representing.
+		- __tiers__ : String. Holds tiers contained in this specific heatmap.
 		- __metricSet__ : Array. Holds set of metric objects representing all datatypes in containing visualization.
-		- __dataset__ : Dataset this visualization is representing.
+		- __datasets__ : Array. Datasets this visualization is representing.
 		- __colorscheme__ : Array. Array of colors to be used for visualization. 
 			- Normal: default color scheme
 			- Highlight: color scheme used for hovering and other similar functions.
 
 	- _Methods_:
+		- __init()__ : Create and initialize visualization tiers
+		- __addData( dataLocation:String , visualizationKey: String , dataset: Array )__: Add new data and revisualize tiers if necessary
 		- __setMetricColorScheme()__ : Set color scheme for metricSet using the heatmap key.
-		- __createTiers( whichTiers: Array )__ : Create and add tiers to this object. Each index in whichTiers array represents a new tier to create. The value of each index represents the type of tier to create.
+		- __createTiers( whichTiers: Array, dataset: Array , mode: String )__ : Create and add tiers to this object. Each index in whichTiers array represents a new tier to create. The value of each index represents the type of tier to create.
+		- __createTier( whichTiers: Array, dataset: Array , mode: String )__ : Create and add single tier to this object. 
 		- __connectTiers( whichTiers: Array )__ : Connect tiers to each other. Connected tiers will be able to trigger one another when interacted with. whichTiers is an array of the indexes of this.tiers[] to be connected. whichTiers[0] is the tier to be connected to whichTiers[i].
+		-__initializeTiers( deferred: Deferred )__: Initialize tiers in the visualization object (create SVG and visualize)
+		-__addHTML( tiers: Array[Tiers] )__: Append html from tiers to the browser.
 
 	- _On initialization_:
 		- setMetricColorScheme(): Sets the default color scheme for metrics. 
@@ -79,26 +106,23 @@ Templates for heatmap visualization.
 		- Create and initialize tiers associated with the configuration of the heatmap.
 		- Load html to the browser. 
 
-		- _Initialization methods:_
-			- addHTML( tiers ): Append html from tiers to the browser.
-			- initializeTiers(): Initialize all tiers.
 
 ####Returned Methods:
 
-- __heatmap.create( dataKey: String , visualizationKey: String , dataset: dataset obj , config: String , metricSet: MetricSet )__ - Create and return HeatmapSet object with specified dataset key (dataLocation), visualization key (visualizationKey), dataset, configuration ( "default", etc. )
+- __visualization.create( dataKey: String , visualizationKey: String , dataset: dataset obj , config: String , metricSet: MetricSet )__ - Create and return HeatmapSet object with specified dataset key (dataLocation), visualization key (visualizationKey), dataset, configuration ( "default", etc. )
 
-### (...).heatmap.gui
+### (...).visualization.gui
 GUI properties for the this (heatmap) visualization type. 
 
 Accessible Constants:
 	- EXTERNAL_HTML: String. Url to the heatmap html template file to be loaded.
 
-### (...).heatmap.tier
+### (...).visualization.tier
 Templates for creation of tiers, or heatmap grids, which are modules of a HeatmapSet. 
 
 ####Classes:
 
-- __TierInstance.__ Generic version of heatmap grid
+- __TierInstance.__ Generic version of visualization tier
 	
 	- _Properties_:
 		- __key__ : String. Key for specific tier within the heatmap it is contained in.

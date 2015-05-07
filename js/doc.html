@@ -1,8 +1,25 @@
-<h1 id="usg-visualization-environment">USG.visualization.environment</h1>
-<h4 id="data-types-">Data types:</h4>
+<h1 id="usg">USG</h1>
+<h2 id="properties">Properties</h2>
 <ul>
-<li>dataLocation: String referring to the file location of a dataset (with .csv or .txt). Used as a unique key for each dataset (without .csv or .txt)</li>
+<li>this.currentEnvironment: Current environment variable (see USG.environment)</li>
+<li>this.showExample: Flag determining whether example data is shown</li>
 </ul>
+<h2 id="usg-constants">USG.constants</h2>
+<p>Metric and visualization constants</p>
+<h3 id="usg-constants-metric">USG.constants.metric</h3>
+<p>Metric definitions.</p>
+<ul>
+<li>METRIC_TYPES: Define metric properties.</li>
+<li>CATEGORY_TYPES: Define properties for each metric category, if necessary.</li>
+<li>DOMAIN_TYPES: Shorthand for types of domains each metric can have.</li>
+</ul>
+<h3 id="usg-constants-colors">USG.constants.colors</h3>
+<p>Color constants.</p>
+<ul>
+<li>colorbrewer: Holds color values for different scales</li>
+</ul>
+<h2 id="usg-environment">USG.environment</h2>
+<p>Controls the visualizations, datasets uploaded, and metric types.</p>
 <h4 id="classes-">Classes:</h4>
 <ul>
 <li><p><strong>EnvironmentInstance.</strong> - Holds a dataset and associated visualizations for that dataset.</p>
@@ -12,15 +29,18 @@
 <li><strong>createData</strong> : Object representing the namespace &quot;environment.dataset.&quot; Used to create new datasets.</li>
 <li><strong>datasets</strong> : Array. Holds array of Dataset objects loaded using loadData().</li>
 <li><strong>metricSet</strong> : MetricSet. Holds set of metric objects. This set represents metadata for all datatypes in datasets[]. New metrics are created when loadData succeeds in loading data to the class and a datatype is not already in the MetricSet. MetricSet starts with 0 metrics until the first dataset is loaded.  </li>
-<li><strong>this.visualizations</strong> : Array. Holds array of visualization objects for that environment instance. </li>
+<li><strong>visualizations</strong> : Array. Holds array of visualization objects for that environment instance. </li>
+<li><strong>datasetCount</strong>: Number of datasets in this.datasets (see above)</li>
 </ul>
 </li>
 <li><p><em>Methods</em>:</p>
 <ul>
-<li><strong>addHeatmapSet( dataLocation: String, config: String )</strong>: adds a HeatmapSet with the data location specified and the configuration specified.
-  configurations available: &quot;default&quot;
-  See heatmap.create(); For parameters. </li>
-<li><strong>loadData( url, callback ) <em>( asychronous )</em></strong>: loads .csv file at the specified url location. The loaded data is used to create a Dataset object. If metrics in the dataset don&#39;t exist, new metrics are created in the <em>metricSet</em> property. Global domains of each metric are reset and data-specific domains are set using the new data.</li>
+<li><strong>addVisualization( dataLocation: String )</strong>: adds a visualization with the data location. </li>
+<li><strong>loadData( thisObj: EnvironmentInstance , dataLocation: String,  callback: Function ) <em>( asychronous )</em></strong>: loads .csv file at the specified url location. The loaded data is used to create a Dataset object. If metrics in the dataset don&#39;t exist, new metrics are created in the <em>metricSet</em> property. Global domains of each metric are reset and data-specific domains are set using the new data.</li>
+<li><strong>alertMessage( msg: String )</strong>: Updates GUI header with a bootstrap alert in Yellow.</li>
+<li><strong>parseData( name: String, file: File , callback: Function ) <em>( asychronous )</em></strong>: Parses a file into CSV format. Creates metric objects used in the visualization</li>
+<li><strong>processData( thisObj: EnvironmentInstance , dataLocation: String , data: Data , callback: function )</strong>: Processes a file into CSV format and loads as a visualization. Creates metric objects used in the visualization</li>
+<li><strong>clear()</strong>: Empty the environment</li>
 </ul>
 </li>
 <li><p><em>On initialization</em>:</p>
@@ -33,9 +53,9 @@
 </ul>
 <h4 id="public-methods-">Public Methods:</h4>
 <ul>
-<li><strong>environment.create( callback: function )</strong> - returns EnviromentInstance class. Exececutes callback function when asynchronous functions done.</li>
+<li><strong>this.create( callback: function )</strong> - returns EnviromentInstance class. Exececutes callback function when asynchronous functions done.</li>
 </ul>
-<h2 id="-environment-dataset">(...).environment.dataset</h2>
+<h2 id="environment-dataset">environment.dataset</h2>
 <p>Templates and associated operations for dataset objects.</p>
 <h4 id="classes-">Classes:</h4>
 <ul>
@@ -66,19 +86,20 @@
 <ul>
 <li><strong>dataset.create( data: Array )</strong> - Returns new DatasetInstance using passed data to create the object. </li>
 </ul>
-<h2 id="-environment-heatmap">(...).environment.heatmap</h2>
-<p>Templates for heatmap visualization. </p>
+<h2 id="environment-visualization">environment.visualization</h2>
+<p>Templates for visualization. </p>
 <h4 id="classes-">Classes:</h4>
 <ul>
-<li><p><strong>HeatmapSet.</strong> Holds a dataset and associated visualizations for that dataset.</p>
+<li><p><strong>VisualizationInstance.</strong> Holds a dataset and associated visualizations for that dataset.</p>
 <ul>
 <li><p><em>Properties</em>:</p>
 <ul>
-<li><strong>key</strong> : Key for specific heatmap.</li>
-<li><strong>dataKey</strong> : Key for data heatmap is representing.</li>
-<li><strong>tiers</strong> : Holds tiers contained in this specific heatmap.</li>
+<li><strong>key</strong> : String. Key for specific heatmap.</li>
+<li><strong>container</strong>: String. Key for the html container</li>
+<li><strong>dataKey</strong> : String. Key for data heatmap is representing.</li>
+<li><strong>tiers</strong> : String. Holds tiers contained in this specific heatmap.</li>
 <li><strong>metricSet</strong> : Array. Holds set of metric objects representing all datatypes in containing visualization.</li>
-<li><strong>dataset</strong> : Dataset this visualization is representing.</li>
+<li><strong>datasets</strong> : Array. Datasets this visualization is representing.</li>
 <li><strong>colorscheme</strong> : Array. Array of colors to be used for visualization. <ul>
 <li>Normal: default color scheme</li>
 <li>Highlight: color scheme used for hovering and other similar functions.</li>
@@ -88,9 +109,14 @@
 </li>
 <li><p><em>Methods</em>:</p>
 <ul>
+<li><strong>init()</strong> : Create and initialize visualization tiers</li>
+<li><strong>addData( dataLocation:String , visualizationKey: String , dataset: Array )</strong>: Add new data and revisualize tiers if necessary</li>
 <li><strong>setMetricColorScheme()</strong> : Set color scheme for metricSet using the heatmap key.</li>
-<li><strong>createTiers( whichTiers: Array )</strong> : Create and add tiers to this object. Each index in whichTiers array represents a new tier to create. The value of each index represents the type of tier to create.</li>
-<li><strong>connectTiers( whichTiers: Array )</strong> : Connect tiers to each other. Connected tiers will be able to trigger one another when interacted with. whichTiers is an array of the indexes of this.tiers[] to be connected. whichTiers[0] is the tier to be connected to whichTiers[i].</li>
+<li><strong>createTiers( whichTiers: Array, dataset: Array , mode: String )</strong> : Create and add tiers to this object. Each index in whichTiers array represents a new tier to create. The value of each index represents the type of tier to create.</li>
+<li><strong>createTier( whichTiers: Array, dataset: Array , mode: String )</strong> : Create and add single tier to this object. </li>
+<li><strong>connectTiers( whichTiers: Array )</strong> : Connect tiers to each other. Connected tiers will be able to trigger one another when interacted with. whichTiers is an array of the indexes of this.tiers[] to be connected. whichTiers[0] is the tier to be connected to whichTiers[i].
+-<strong>initializeTiers( deferred: Deferred )</strong>: Initialize tiers in the visualization object (create SVG and visualize)
+-<strong>addHTML( tiers: Array[Tiers] )</strong>: Append html from tiers to the browser.</li>
 </ul>
 </li>
 <li><p><em>On initialization</em>:</p>
@@ -98,14 +124,7 @@
 <li>setMetricColorScheme(): Sets the default color scheme for metrics. </li>
 <li>setDefaultVisibility( dataKey, key ): Sets the default visibility for metrics.</li>
 <li>Create and initialize tiers associated with the configuration of the heatmap.</li>
-<li><p>Load html to the browser. </p>
-</li>
-<li><p><em>Initialization methods:</em></p>
-<ul>
-<li>addHTML( tiers ): Append html from tiers to the browser.</li>
-<li>initializeTiers(): Initialize all tiers.</li>
-</ul>
-</li>
+<li>Load html to the browser. </li>
 </ul>
 </li>
 </ul>
@@ -113,17 +132,17 @@
 </ul>
 <h4 id="returned-methods-">Returned Methods:</h4>
 <ul>
-<li><strong>heatmap.create( dataKey: String , visualizationKey: String , dataset: dataset obj , config: String , metricSet: MetricSet )</strong> - Create and return HeatmapSet object with specified dataset key (dataLocation), visualization key (visualizationKey), dataset, configuration ( &quot;default&quot;, etc. )</li>
+<li><strong>visualization.create( dataKey: String , visualizationKey: String , dataset: dataset obj , config: String , metricSet: MetricSet )</strong> - Create and return HeatmapSet object with specified dataset key (dataLocation), visualization key (visualizationKey), dataset, configuration ( &quot;default&quot;, etc. )</li>
 </ul>
-<h3 id="-heatmap-gui">(...).heatmap.gui</h3>
+<h3 id="-visualization-gui">(...).visualization.gui</h3>
 <p>GUI properties for the this (heatmap) visualization type. </p>
 <p>Accessible Constants:</p>
 <pre><code>- EXTERNAL_HTML: String. Url to the heatmap html template file to be loaded.
-</code></pre><h3 id="-heatmap-tier">(...).heatmap.tier</h3>
+</code></pre><h3 id="-visualization-tier">(...).visualization.tier</h3>
 <p>Templates for creation of tiers, or heatmap grids, which are modules of a HeatmapSet. </p>
 <h4 id="classes-">Classes:</h4>
 <ul>
-<li><p><strong>TierInstance.</strong> Generic version of heatmap grid</p>
+<li><p><strong>TierInstance.</strong> Generic version of visualization tier</p>
 <ul>
 <li><em>Properties</em>:<ul>
 <li><strong>key</strong> : String. Key for specific tier within the heatmap it is contained in.</li>
