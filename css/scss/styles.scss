@@ -3,7 +3,7 @@
 @import 'd3Parcoords';
 
 
-#USG-body, #vizualizations-holder, #vizualizations-holder-container,  html, .heatmap, .full-height {
+#USV-body, #vizualizations-holder, #vizualizations-holder-container,  html, .heatmap, .full-height {
 	height: 100%;
 }
 
@@ -67,7 +67,7 @@
     	overflow-x: hidden;
     }
 }
-.USG-alert {
+.USV-alert {
     text-align: center;
 }
 
