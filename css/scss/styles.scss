@@ -6,6 +6,21 @@
 #USV-body, #vizualizations-holder, #vizualizations-holder-container,  html, .heatmap, .full-height {
 	height: 100%;
 }
+ 
+#USV-paste-form {
+    text-align: center;
+
+    #paste-textarea {
+        display: block;
+        width: 100%;
+    }
+
+    #USV-paste-submit {
+        margin-top: 10px;
+    }
+}
+
+
 
 #navbar-main, .navbar-visualization {
 

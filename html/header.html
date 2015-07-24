@@ -15,9 +15,15 @@
 	  	
 		<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
 		  	<div class="nav navbar-nav navbar-right">
-		        <form class="navbar" onsubmit="return USV.gui.showUpload();">
-		  			<button class="btn btn-default navbar-btn" type="submit" ><span class="glyphicon glyphicon-circle-arrow-up" aria-hidden="true" ></span> Upload CSV</button>
+		        <form class="navbar" onsubmit="return USV.gui.showCopyPaste();">
+		  			<button class="btn btn-default navbar-btn" type="submit" >
+		  				✍</span> Enter passwords</button>
 		        </form>
+		        <form class="navbar" onsubmit="return USV.gui.showUpload();">
+		  			<button class="btn btn-default navbar-btn" type="submit" >
+		  				<span class="glyphicon glyphicon-circle-arrow-up" aria-hidden="true" ></span> Upload CSV</button>
+		        </form>
+
 		        <!-- <button class="btn btn-default navbar-btn" ><span class="glyphicon glyphicon glyphicon-cog" aria-hidden="true" ></span> Settings</button> -->
 		    </div>
 		</div>
@@ -30,13 +36,11 @@
 	<div class="container-fluid" >
 		<div class="row">
 
-			<div class="col-md-12" id="USV-information">
-				
-			</div>
+			<div class="col-md-12" id="USV-information"></div>
 
-			<div class="col-md-12" id="USV-information-upload">
-				
-			</div>
+			<div class="col-md-12" id="USV-information-upload"></div>
+
+			<div class="col-md-12" id="USV-information-copyPaste"></div>
 
 		</div>
 	</div>

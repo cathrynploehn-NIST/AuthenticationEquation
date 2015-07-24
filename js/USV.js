@@ -243,7 +243,7 @@ var USV = USV || {};
 				/** Holds color values for different scales */
 				var colorbrewer = {
 				    Greys: {
-				    	2: ["#ffffff","#AA00FF"],
+				    	2: ["#ffffff","#000000"],
 				        9: ["#ffffff","#f0f0f0","#d9d9d9","#bdbdbd","#969696","#737373","#525252","#252525","#000000"]},
 				    GnYlRd: {
 				        9: ["#081d58","#225ea8", "#41b6c4", "#c7e9b4","#ffffd9", "#ffeda0","#feb24c","#fc4e2a","#bd0026"],
@@ -318,6 +318,7 @@ var USV = USV || {};
 								$.when( thisObj.visualizations[ "parcoords-overview" ].init() , thisObj.visualizations[ "heatmap-overview" ].init() ).done(function () {
 									gui.showVisualization( dataLocation );
 								});
+
 							} else {
 								$.when( thisObj.visualizations[ "heatmap-overview" ].addData( dataLocation , "heatmap-overview" , thisObj.datasets[ dataLocation ] ), thisObj.visualizations[ "parcoords-overview" ].addData( dataLocation , "parcoords-overview" , thisObj.datasets[ dataLocation ] ) ).done(function () {
 									gui.showVisualization( dataLocation );
@@ -527,6 +528,8 @@ var USV = USV || {};
 					normal: constants.colors.colorbrewer.Greys[2],
 					highlight: constants.colors.colorbrewer.WtRd[2]
 				}
+
+				this.renderQueue;
 				
 			};
 			VisualizationInstance.prototype = {
@@ -752,6 +755,7 @@ var USV = USV || {};
 					this.parentKey = parentKey;
 					
 					this.dataKey = dataKey;
+					console.log(dataKey);
 					this.dataset = dataset;
 					this.metricSet = metricSet;
 					if( mode == "heatmap-overview" ){
@@ -790,6 +794,10 @@ var USV = USV || {};
 					this.connectedTiers = [];
 					this.hiddenRows = {};
 					this.totalGutterCount = 0;
+
+					// this.renderQueue = renderQueue(this.drawQueue).clear(this.clear);
+					// this.initQueue = renderQueue(this.initDrawQueue).clear(this.clear);
+			
 				};
 				TierInstance.prototype = {
 					/** Loads html into this.html. Returns deferred promise object. */
@@ -874,11 +882,13 @@ var USV = USV || {};
 						return this.html.markup;
 					}, 
 					/** Loops through all non-string metrics and executes the passed draw function */
-					draw: function ( drawFunction, selector ) {
+					draw: function ( funct, selector, type ) {
+
 						var currentMetricIndex = 0,
 							thisObj = this;
 							nonPermutedMetricCount = 0,
-							gutterFlag = false;
+							gutterFlag = false,
+							toBeQueued = [];
 						
 						// thisObj.countGutters();
 						this.gutterCount = 0;
@@ -903,10 +913,18 @@ var USV = USV || {};
 										var offsetIndex =  totalColumns - totalIndex;
 										var offset = (offsetIndex * (thisObj.grid.size.width - .2));
 										var x = offset + thisObj.svg.dimensions.widthMidpoint + (thisObj.grid.size.width/2);
-										if( drawFunction ){
-											drawFunction( thisObj , thisObj.gutterCount , metricIndex , metricName, currentMetricIndex , categoryIndex , nonPermutedMetricCount , selector , x );
+										
+										if( funct ){
+											funct( thisObj , thisObj.gutterCount , metricIndex , metricName, currentMetricIndex , categoryIndex , nonPermutedMetricCount , selector , x );
 										}
 										
+										// var props = {};
+										// props[0] = thisObj;
+										// props[1] = metricName;
+										// props[2] = x;
+
+										// toBeQueued.push(props);
+
 										currentMetricIndex++;
 										if( thisObj.metricSet.metrics[metricName].permuted.type != "permuted"  ){
 											nonPermutedMetricCount++;
@@ -925,6 +943,9 @@ var USV = USV || {};
 						
 						} //End category Loop
 						this.totalGutterCount = thisObj.gutterCount;
+						// if( funct  && !ty){
+						// 	funct(toBeQueued);
+						// }
 					},
 					/** Template for what a draw function could look like */
 					drawFunction: function ( thisObj , gutterCount , metricIndex , metricName, currentMetricIndex , categoryIndex , nonPermutedMetricCount , selector , x ) {
@@ -970,8 +991,11 @@ var USV = USV || {};
 							// 	.attr("style", "fill: #FF2525")
 							// 	.attr("fill-opacity", 0.2)
 							// 	.attr("class", "columnSelector");
+
 							this.draw( thisObj.initializeBlocks );
 							this.draw( thisObj.drawBlocks );
+
+
 							var thisObj = this;
 							var dataset = thisObj.dataset.getData();
 							var length = (dataset.length + 8) * thisObj.grid.size.height;
@@ -990,6 +1014,7 @@ var USV = USV || {};
 						var gridsvg = thisObj.svg.obj;
 						var nameClass = "." + metricName;
 						var dataset = thisObj.dataset.getData();
+						
 						// Initialize this block
 						// Draw large grid
 						var columnObj = gridsvg.selectAll(nameClass);
@@ -1104,14 +1129,12 @@ var USV = USV || {};
 					    		thisObj.connectedTiers[i].hover( metricName , type , selector , row , (thisObj.key - 1) );
 					    	}
 					    }
-				
 					},
 					/** Activates same hover function as hoverTrigger. If a tier is connected to this tier, it will activate this function on hover. */
 					hover: function ( metricName , type , selector , row ) {
 						if( type === "mouseover" || type === "mouseout" ){
 							this.colorColumnRow( metricName , type , selector , row );
 						} 
-	
 					},
 					/**  
 					* Set filter min and max values for passed metric.
@@ -1167,8 +1190,72 @@ var USV = USV || {};
 						} else {
 							obj.attr("width", 0);
 							
-						}
+						}	
+					},
+					/** */
+					clear: function ( ) {
+
+					},
+					drawQueue: function ( props ) {
+						console.log(props);
+						var thisObj = props[0];
+						var metricName = [1]
+						var x = props[2];
+
+						var visible = thisObj.metricSet.isVisible( metricName , thisObj.dataKey , thisObj.visualizationKey );
+						var svg = thisObj.svg.obj;
+						var obj = svg.selectAll(nameClass);
+						var nameClass = "." + metricName;	
 						
+						var colorScale = thisObj.metricSet.getNormalColorScale( metricName , thisObj.dataKey , thisObj.visualizationKey );
+						// Initialize this block
+						// Draw large grid
+						var columnObj = svg.selectAll(nameClass);
+						columnObj
+							.attr("width", thisObj.grid.size.width)
+      						.attr("height", thisObj.grid.size.height)
+      						.style("fill", function(d) { return colorScale(d[metricName]); });
+
+						if( visible ){
+							obj
+								.attr("width", thisObj.grid.size.width)
+								.attr("transform", function(d, i) {
+									var y = thisObj.grid.size.height * i + thisObj.margin.top
+									return "translate(" + x + ", " + y + ")";
+							
+								});
+							
+						} else {
+							obj.attr("width", 0);
+							
+						}	
+					},
+					initDrawQueue: function ( props ){
+						console.log(props);
+						var thisObj = props[0];
+						var metricName = props[1];
+
+						var gridsvg = thisObj.svg.obj;
+						var nameClass = "." + metricName;
+						var dataset = thisObj.dataset.getData();
+						
+						// Initialize this block
+						// Draw large grid
+						var columnObj = gridsvg.selectAll(nameClass);
+						columnObj
+							.data(dataset)
+							.enter()
+							.append("rect")
+							.attr("class", function(d, i){
+								return i + " "+metricName+" "+ metricName + i + " " + d['originalPassword']+" "+ d['permutedPassword']+" block hiderow";
+							})
+							.attr("id", function(d){return d['originalPassword'] + metricName;})
+							.on("mouseover", function(d, i){ 
+								return thisObj.hoverTrigger( d, metricName , this , "mouseover" ) 
+							})
+							.on("mouseout", function(d, i){
+								return thisObj.hoverTrigger( d, metricName , this , "mouseout" ) 
+							});
 					}
 				};
 
@@ -1245,11 +1332,13 @@ var USV = USV || {};
 					},
 					visualize: {
 						value: function ( ) {
+							console.log(this.visualizationKey);
 							var thisObj = this,
 								id = "#" + this.html.id, 
 								color = thisObj.colorBy();
 							$(id).html('');
 							thisObj.parcoords = null;
+
 							thisObj.parcoords = d3.parcoords({
 								data: thisObj.totalData,
 								metricSet: thisObj.metricSet,
@@ -1257,8 +1346,8 @@ var USV = USV || {};
 								visualizationKey: thisObj.visualizationKey,
 								orderedMetrics: thisObj.orderedMetricsList,
 							})(id);
-							thisObj.parcoords
-								
+							console.log(thisObj);
+							thisObj.parcoords	
 								.width(thisObj.width)
 								.detectDimensions( )
 								.dimensions( thisObj.orderedMetricsList )
@@ -1274,11 +1363,8 @@ var USV = USV || {};
 								.interactive()
 								.brushMode("1D-axes")
 								.hideAxis("datasetIndex")
-								.color()
-							;
-							for(var i = 0; i < thisObj.orderedMetricsList.length; i++){
-								// thisObj.hideMultiColumn( thisObj.orderedMetricsList[i] );
-							}
+								.color("#000000");
+
 							thisObj.parcoords.updateAxes().bundleDimension(thisObj.currentBundledDimension).render();
 						
 						},
@@ -1314,6 +1400,8 @@ var USV = USV || {};
 							});
 							thisObj.totalDataList.push( name );
 							thisObj.visibleDatasets[index] = true;
+							thisObj.orderedMetricsList = thisObj.metricSet.getOrderedMetrics( this.dataKey , thisObj.visualizationKey );
+
 							thisObj.visualize();
 							// thisObj.parcoords.autoscale().updateAxes().bundleDimension(thisObj.currentBundledDimension).render();
 						},
@@ -1391,8 +1479,7 @@ var USV = USV || {};
 							if( metricName == "datasetIndex" || !metricName){ // color categorically
 								var colors = d3.scale.category10();
 								colorFunction = function(d) { return colors(d.datasetIndex); };
-								console.log(colorFunction)
-								console.log(colorFunction(0));
+
 								if( !metricName ){
 									return colorFunction;
 								}
@@ -1427,7 +1514,6 @@ var USV = USV || {};
 						value: function ( dataIndex ) {
 							var data = [],
 								thisObj = this;
-							console.log(thisObj.visibleDatasets)
 							if( thisObj.visibleDatasets[dataIndex] ){ // make invisible
 								thisObj.visibleDatasets[dataIndex] = false;
 							} else { // make visible
@@ -1436,12 +1522,10 @@ var USV = USV || {};
 							console.log(thisObj.visibleDatasets);
 							
 							data = thisObj.totalData.filter(function (d, i){
-								console.log(thisObj.visibleDatasets[d.datasetIndex])
-								console.log(d.datasetIndex)
+
 								return thisObj.visibleDatasets[d.datasetIndex];
 							});
-							console.log(data);
-							console.log(thisObj.totalData)
+
 							thisObj.parcoords.brushUpdated( data );
 						},
 						enumerable: true,
@@ -1522,8 +1606,7 @@ var USV = USV || {};
 							var id = "#" + this.html.id,
 							height = $( "#vizualizations-holder" ).height(),
 							width = $( id ).width();
-							console.log(id)
-							console.log(width)
+
 							if(this.mode == "heatmap-overview"){
 								$(id).append('<button class="btn btn-default navbar-btn btn-sm overview-view-btn" id="' + this.dataset.getName() + '" type="submit" ><span class="glyphicon glyphicon-eye-open" aria-hidden="true" ></span></button>');
 								var buttonHeight = $(".overview-view-btn").outerHeight();
@@ -1568,6 +1651,15 @@ var USV = USV || {};
 								.on("click", function(d, i){
 									return thisObj.scrollTo( i ); 
 								});
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
+					},
+					clear: {
+						value: function() {
+							// var nameclass = this.html.id;
+							// $(nameclass).html('');
 						},
 						enumerable: true,
 					    configurable: true, 
@@ -1815,6 +1907,17 @@ var USV = USV || {};
 						enumerable: true,
 					    configurable: true, 
 					    writable: true
+					},
+					clear: {
+						value: function() {
+							// var nameclass = this.columnsSvg.html.id + " svg";
+							// $(nameclass).html('');
+							// var nameclass = this.svg.html.id + " svg";
+							// $(nameclass).html('');
+						},
+						enumerable: true,
+					    configurable: true, 
+					    writable: true
 					}
 				}); 
 				HeatmapTier2.prototype.constructor = HeatmapTier2;
@@ -1886,7 +1989,7 @@ var USV = USV || {};
 							} else if ( this.mode == "heatmap-overview" ) {
 								this.addDataControl();
 							}
-							this.draw( this.addControls );
+							this.draw( this.addControls, null, "Controls" );
 							
 							this.createEventHandlers();
 						},
@@ -1968,7 +2071,6 @@ var USV = USV || {};
 							$( parent + " .show-hide-data-btn").click(function(){ // Show/hide dataset
 								var id = $(this).attr("id");
 								id = id.replace("-show-hide-data-btn", "");
-								console.log(id)
 								thisObj.triggerHideData( id );
 							});
 						},
@@ -2197,7 +2299,6 @@ var USV = USV || {};
 					addDataControl : {
 						value: function() {
 							var parent = "#" + this.parentKey;
-							console.log(this);
 							$(parent + ' .about-dataset-holder').html('');
 							for(var i  = 0; i < this.dataset.length; i++){
 								var data = this.dataset[i].getData();
@@ -2400,8 +2501,8 @@ var USV = USV || {};
 						value: function ( metricName , type , selector , row , datasetIndex ) {
 							this.datasetIndex = datasetIndex;
 							if( row ){
-								this.draw( this.populateValues , row );
-								this.draw( this.colorBlocks , row );
+								this.draw( this.populateValues , row , "Controls");
+								this.draw( this.colorBlocks , row , "Controls");
 								this.boldLabels( metricName , type );
 							
 								if ( thisObj.mode == "heatmap-overview" ) {
@@ -2520,7 +2621,6 @@ var USV = USV || {};
 						    for(var i = 0; i < this.connectedTiers.length; i++){
 						    	if( this.connectedTiers[i].visualize ) {
 						    		this.connectedTiers[i].visualize();
-						    		console.log("visualize " + i);
 						    	}
 						    }
 							
@@ -2540,7 +2640,6 @@ var USV = USV || {};
 					},
 					triggerHideData: {
 						value: function ( dataIndex ) {
-							console.log("triggerHideData")
 							console.log( dataIndex )
 							for(var i = 0; i < this.connectedTiers.length; i++){
 						    	if( this.connectedTiers[i].brushData ) {
@@ -3157,7 +3256,7 @@ var USV = USV || {};
 					}
 				},
 				getDomain:function ( key , visualizationKey ) {					
-					if( visualizationKey == "global" ){
+					if( visualizationKey == "global" || visualizationKey == "parcoords-overview"){
 						var min =  this.domainVal.global.min;
 						var max =  this.domainVal.global.max;
 					} else {
@@ -3361,7 +3460,6 @@ var USV = USV || {};
 			/**  Show all visualizations */
 			var showAllOverviewVisualizations = function ( callback ) {
 				var visualizations = $('.visualization-instance');
-				console.log(visualizations);
 				if( visualizations.length > 0 ){
 					var i = 0;
 					$.when($('.visualization-instance').show()).done(function(){
@@ -3391,18 +3489,21 @@ var USV = USV || {};
 		var EXTERNAL_HTML = {
 			header: "html/header.html",
 			upload: "html/upload.html",
+			copyPaste: "html/copyPaste.html",
 			uploadSuccess: "html/upload-success.html"
 		};
+
 		// Show successful upload alert
 		var successUpload = function () {
 			$("#USV-information-upload").load(EXTERNAL_HTML.uploadSuccess, function done () {
 				$("#USV-information-upload").delay(1500).fadeOut("slow");
 			});
 		}
+
 		// Show upload module
 		var showUpload = function ( ) {
+			$("#USV-information-copyPaste").html('');
 			$("#USV-information-upload").load(EXTERNAL_HTML.upload, function done () {
-				$("#USV-information-upload").hide();
 				$('.csvData-btn :file').on('fileselect', function(event, numFiles, label) {
 			        $('.csvData-label').html(label);
 			        $("#USV-upload-submit").removeAttr("disabled");
@@ -3418,18 +3519,36 @@ var USV = USV || {};
 			return false;
 		};
 		
-		// Initialize the GUI0
+		var showCopyPaste = function ( ){
+			$("#USV-information-upload").html('');
+			$("#USV-information-copyPaste").load(EXTERNAL_HTML.copyPaste, function done () {
+				$("#USV-information-copyPaste").hide();
+			    $(document).on('change', '#paste-textarea', function() {
+			    	var input = $('#paste-textarea').val();
+			    	if(input.length > 0){
+			    		$("#USV-paste-submit").prop("disabled", false);
+			    	} else {
+			    		$("#USV-paste-submit").prop("disabled", true);
+			    	}
+				});
+				$("#USV-information-copyPaste").delay( 0 ).slideDown("slow");
+			});
+			return false;
+		};
+
+		// Initialize the GUI
 		var initialize = function ( callback ) {
 			$("#USV-body").load(EXTERNAL_HTML.header, function done () {
 				showUpload();
 				callback();
 			});
-
 		};
+
 		return {
 			initialize: initialize,
 			successUpload: successUpload,
-			showUpload: showUpload
+			showUpload: showUpload,
+			showCopyPaste: showCopyPaste
 		}
 	})( );
 	/** Upload operations */
@@ -3458,6 +3577,13 @@ var USV = USV || {};
 			reader.readAsText(file);
 		}
 		return false;
+	}
+
+	this.generateData = function (event) {
+		event.preventDefault();
+		var data = $("#"+event.target[0].id).val();
+		$("#"+event.target[0].id).val('');
+
 	}
 	
 	/** Create environment and load example data visualization */
