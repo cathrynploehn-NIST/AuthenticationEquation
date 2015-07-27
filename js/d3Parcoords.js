@@ -14,7 +14,7 @@ d3.parcoords = function(config) {
     margin: { top: 200, right: 30, bottom: 50, left: 0 },
     color: "#069",
     composite: "source-over",
-    alpha: 0.05,
+    alpha: 0.2,
     bundlingStrength: 0.5,
     bundleDimension: null,
     smoothness: 0.25,
