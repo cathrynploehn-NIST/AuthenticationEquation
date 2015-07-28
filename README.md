@@ -1,18 +1,23 @@
 # The Authentication Equation
 _A tool for visualizing the convergence of usability and security in text-based passwords_
 
-## About this code
-This code comprises of a data visualization tool to explore password usability and security metrics. The visualization tool integrates various measurements of passwords, enabling exploration of the intersection of their usability and security components. The tool is based on insight from previously gathered data from usability studies conducted at the United States National Institute of Standards and Technology. It also leverages web technologies to flexibly display data sets computed from sets of passwords.
+_Note: if you are looking for the tool as it appeared in the HCII 2015 proceedings, you will find it here: [..DataVis/tree/HCII-2015](https://github.com/usnistgov/DataVis/tree/HCII-2015)_
 
-## What this tool doesn't do
+__Explore the tool [here](http://usnistgov.github.io/DataVis/)__
 
-- _Compare different data sets._ The tool calculates the mapping of values to color scales based on the one data set it is handling at a time. This means color values map differently with every dataset. The resulting visuals for datasets should not be compared side by side.
+## Overview
+The USV (Usability and Security Visualizer) is a data visualization tool originally built to explore password usability and security metrics. The visualization tool integrates various measurements of passwords, enabling exploration of the intersection of their usability and security components. 
 
-- _Visualize human generated sets of passwords._ Due to the way in which entropy is calculated, this tool is only meant to visualize system generated passwords (randomly generated). The tool does not currently implement methods of measuring human generated sets of passwords. 
+The tool is based on insight from previously gathered data from usability studies conducted at the United States National Institute of Standards and Technology. It also leverages web technologies to flexibly display data sets computed from sets of passwords.
 
-## How visualize a set of passwords
+The USV is intented to visualize multivariate data (rows of data with different properties describing qualities of each row in columns).
 
-_Note: Sample files are provided in the input and output folders of the tool for your reference._
+In a generic sense, the tool provides a mechanism for visualizing the same groups of metrics for rows of data in 2 different states or phases. The rows are organized symmetrically do display the the The example given is password permutation, or rearranging the passwords so that all characters are grouped by each character type (letters, numbers, symbols). Password permutation is intended to optimize the efficiency for password entry on a mobile device.
+
+## How to use the tool
+You can either use the tool online [here](http://usnistgov.github.io/DataVis/) or download it for offline use.
+
+In order to use the tool online, you will have to create a dataset file first using the Python files (Step B. below). 
 
 ### A. What you'll need:
 - A .txt file list of the passwords to be visualized. For example (newline separated):
@@ -41,8 +46,8 @@ n]P27{D(
 
 ### B. Create your dataset
 
-1. Move your list of passwords (.txt file) to `DataVis/input/`. 
-2. Open `DataVis/USG.py` in a code/text editor. 
+1. Move your list of passwords (.txt file) to `DataVis/dataGen/input/`. 
+2. Open `DataVis/dataGen/USG.py` in a code/text editor. 
 3. Scroll to line 63, type in the filename of your list of passwords, and save the file:
 ```
 ################ Change input file here #######################
@@ -50,19 +55,20 @@ n]P27{D(
 i = open('input/example.txt', 'r')
 ```
 4. Open the Command Line (PC) or Terminal (Mac). 
-5. Navigate (using the `cd` command) to the folder in which `USG.py` is contained (`DataVis/`).
+5. Navigate (using the `cd` command) to the folder in which `USG.py` is contained (`DataVis/dataGen`).
 6. Run `USG.py` using the command `Python3 USG.py`
 7. Enter a filename for the new dataset to be created when the program prompts you:
 ```
 Enter the name of the output file: 
 ```
-8. The new dataset should now appear in the `DataVis/output` folder. 
+8. The new dataset should now appear in the `DataVis/dataGen/output` folder. 
+9. Place your data in the `/data` folder for easy access.
 
 
 ### C. Visualize your dataset
 
-1. Open `output/js/init.js` and type in the name of the `.csv` file just generated (or any .csv file generated into the `output` folder you would like to visualize). 
-2. If you are able to host this code on a server, you can open `output/password-visualization.html` to run the visualization. However, you can also run the code without such an environment by following these instructions: 
+1. If you have downloaded the tool, open `index.html` using a server (localhost is a good option) or go to [usnistgov.github.io/DataVis/](http://usnistgov.github.io/DataVis/).
+If you don't have a server, you can also run the code without such an environment by following these instructions: 
   1. Close Chrome if it is open (make sure all background operations of chrome have ceased.
   2. Open Chrome from the Command Line/Terminal:
     
@@ -77,7 +83,7 @@ Enter the name of the output file:
     ```
     >> chrome.exe --allow-file-access-from-files
     ```
-  3. Open `output/password-visualization.html` 
+  3. Open `index.html` 
 
 ## Disclaimer 
 
